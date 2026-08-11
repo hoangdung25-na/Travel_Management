@@ -1,0 +1,159 @@
+# ==============================================================================
+# TRAVEL MICROSERVICES PLATFORM - DOCKER COMPOSE INFRASTRUCTURE STACK
+# ==============================================================================
+# File này định nghĩa toàn bộ Hạ Tầng Dịch Vụ Nền (PostgreSQL, Redis, Kafka, Kafka UI)
+# phục vụ cho việc phát triển môi trường Local Development của dự án Travel Microservices.
+#
+# CÁCH ĐỌC BIẾN MÔI TRƯỜNG:
+# Docker Compose tự động nạp các biến từ file `.env` ở cùng thư mục.
+# Cú pháp `${VARIABLE:-default_value}` giúp cung cấp giá trị mặc định nếu chưa khai báo.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. MẠNG NỘI BỘ DOCKER (NETWORKS)
+# ------------------------------------------------------------------------------
+networks:
+  travel-network:
+    name: travel-network
+    driver: bridge # Chế độ bridge tạo mạng ảo cách ly nội bộ trên máy host
+
+# ------------------------------------------------------------------------------
+# 2. Ổ ĐĨA LƯU TRỮ DỮ LIỆU BỀN VỮNG (VOLUMES)
+# ------------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    name: postgres_data
+    driver: local # Lưu dữ liệu PostgreSQL trên ổ cứng local
+  kafka_data:
+    name: kafka_data
+    driver: local # Lưu dữ liệu sự kiện Kafka Topics trên ổ cứng local
+  redis_data:
+    name: redis_data
+    driver: local # Lưu trữ cache và chìa khóa chống trùng lặp dữ liệu của Redis
+
+# ------------------------------------------------------------------------------
+# 3. KHO CONTAINER DỊCH VỤ (SERVICES)
+# ------------------------------------------------------------------------------
+services:
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 1: POSTGRESQL DATABASE (Tích hợp extension pgvector)
+  # ----------------------------------------------------------------------------
+  travel-postgres:
+    image: pgvector/pgvector:pg16              # Image PostgreSQL 16 tích hợp sẵn extension pgvector cho AI Service
+    container_name: travel-postgres            # Tên đại diện cho Container khi xem bằng docker ps
+    restart: unless-stopped                    # Tự động khởi động lại nếu bị sập
+    
+    # Biến môi trường nạp từ file .env (Không hardcode credentials)
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      POSTGRES_DB: ${POSTGRES_DB:-db_travel}
+    
+    # Mapping Port giao tiếp: [Host Port] : [Container Port]
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    
+    # Gắn đĩa cứng lưu dữ liệu & Script tự động tạo 5 Microservice Databases
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+    
+    networks:
+      - travel-network
+    
+    # Kiểm tra sức khỏe Container (Healthcheck)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-db_travel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 2: REDIS IN-MEMORY CACHE & IDEMPOTENCY STORE
+  # ----------------------------------------------------------------------------
+  travel-redis:
+    image: redis:7-alpine
+    container_name: travel-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - travel-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 3: APACHE KAFKA MESSAGE BROKER (KRaft Mode)
+  # ----------------------------------------------------------------------------
+  travel-kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: travel-kafka
+    restart: unless-stopped
+    ports:
+      - "${KAFKA_PORT_INTERNAL:-9092}:9092"     # Container-to-Container listener (Internal network)
+      - "${KAFKA_PORT_EXTERNAL:-29092}:29092"   # Host-to-Container listener (Cho Spring Boot app trên Host machine)
+    
+    environment:
+      # Tối ưu bộ nhớ JVM Heap (Nạp từ .env)
+      KAFKA_HEAP_OPTS: "${KAFKA_HEAP_OPTS:--Xms256m -Xmx512m}"
+
+      # KRaft Settings
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@travel-kafka:9093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: '${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qk}'
+
+      # Listeners Mapping
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://travel-kafka:9092,PLAINTEXT_HOST://localhost:${KAFKA_PORT_EXTERNAL:-29092}'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+
+      # Single Node Topic Defaults
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      
+      # Data Directory
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+    
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - travel-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 4: KAFKA MANAGEMENT WEB UI
+  # ----------------------------------------------------------------------------
+  travel-kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: travel-kafka-ui
+    restart: unless-stopped
+    ports:
+      - "${KAFKA_UI_PORT:-8088}:8080" # Map ra port chỉ định trong .env
+    environment:
+      KAFKA_CLUSTERS_0_NAME: 'travel-kafka-cluster'
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'travel-kafka:9092'
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    networks:
+      - travel-network
+    depends_on:
+      travel-kafka:
+        condition: service_healthy

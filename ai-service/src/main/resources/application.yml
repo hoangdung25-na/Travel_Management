@@ -1,0 +1,10 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: ai-service
+  datasource:
+    url: jdbc:postgresql://localhost:5436/db_travel_ai
+    username: postgres
+    password: postgrespassword
