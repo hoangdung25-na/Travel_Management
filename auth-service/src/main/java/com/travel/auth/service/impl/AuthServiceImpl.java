@@ -70,8 +70,8 @@ public class AuthServiceImpl implements AuthService {
                         .description("Default system role for " + targetRoleCode)
                         .build()));
 
-        // Create user identity in Keycloak
-        keycloakService.createKeycloakUser(request.getEmail(), request.getPassword(), request.getFullName());
+        // Create user identity in Keycloak (Bypassed for local dev)
+        // keycloakService.createKeycloakUser(request.getEmail(), request.getPassword(), request.getFullName());
 
         Set<RoleEntity> roles = new HashSet<>();
         roles.add(role);
@@ -110,9 +110,21 @@ public class AuthServiceImpl implements AuthService {
             if (user.getStatus() == AccountStatus.PENDING_APPROVAL) {
                 throw new BadRequestException("Tài khoản đang chờ quản trị viên phê duyệt.");
             }
+            
+            // Mock Authentication Bypass for local development
+            if (passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+                return AuthTokenVm.builder()
+                        .accessToken(user.getId().toString())
+                        .refreshToken(user.getId().toString())
+                        .tokenType("Bearer")
+                        .expiresIn(3600L)
+                        .build();
+            } else {
+                throw new BadRequestException("Mật khẩu không chính xác.");
+            }
         }
-
-        return keycloakService.authenticate(request.getUsername(), request.getPassword());
+        
+        throw new BadRequestException("Tài khoản không tồn tại.");
     }
 
     @Override

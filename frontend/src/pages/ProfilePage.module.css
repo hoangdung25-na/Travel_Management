@@ -1,0 +1,99 @@
+.container {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1rem;
+  min-height: calc(100vh - 140px);
+  background-color: #f5f7fa;
+}
+
+.profileCard {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 600px;
+}
+
+.profileCard h2 {
+  color: #2d3748;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.avatarPlaceholder {
+  width: 80px;
+  height: 80px;
+  background-color: #3182ce;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.alert {
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.success {
+  background-color: #c6f6d5;
+  color: #22543d;
+}
+
+.error {
+  background-color: #fed7d7;
+  color: #822727;
+}
+
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.formGroup input {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.saveBtn {
+  width: 100%;
+  padding: 1rem;
+  background-color: #38a169;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 1rem;
+}
+
+.saveBtn:hover {
+  background-color: #2f855a;
+}

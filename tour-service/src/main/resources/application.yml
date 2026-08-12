@@ -4,7 +4,18 @@ server:
 spring:
   application:
     name: tour-service
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
   datasource:
     url: jdbc:postgresql://localhost:5433/db_travel_tour
     username: postgres
     password: postgrespassword
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect

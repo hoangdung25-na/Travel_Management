@@ -1,0 +1,198 @@
+.page {
+  padding: 48px 0 96px;
+  background-color: var(--color-bg);
+  min-height: calc(100vh - 80px);
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  margin-bottom: 32px;
+  transition: var(--transition-fast);
+}
+
+.backBtn:hover {
+  color: var(--color-text-primary);
+  transform: translateX(-4px);
+}
+
+.header {
+  margin-bottom: 48px;
+}
+
+.meta {
+  margin-bottom: 16px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 4px 12px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.title {
+  font-size: 2.5rem;
+  letter-spacing: -0.5px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.section {
+  margin-bottom: 48px;
+  background-color: var(--color-surface);
+  padding: 32px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+}
+
+.section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.description {
+  color: var(--color-text-secondary);
+  font-size: 1.125rem;
+  line-height: 1.8;
+}
+
+.itineraryList {
+  display: flex;
+  flex-direction: column;
+}
+
+.itineraryItem {
+  display: flex;
+  gap: 24px;
+}
+
+.dayIndicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dayDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color-text-primary);
+  margin-top: 6px;
+}
+
+.dayLine {
+  flex: 1;
+  width: 2px;
+  background-color: var(--color-border);
+  margin: 8px 0;
+}
+
+.itineraryItem:last-child .dayLine {
+  display: none;
+}
+
+.dayContent {
+  padding-bottom: 32px;
+}
+
+.dayContent h3 {
+  font-size: 1.25rem;
+  margin-bottom: 8px;
+}
+
+.dayContent p {
+  color: var(--color-text-secondary);
+}
+
+.bookingCard {
+  position: sticky;
+  top: 100px;
+  padding: 32px;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.bookingCard h3 {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.bookingSub {
+  color: var(--color-text-secondary);
+  margin-bottom: 24px;
+}
+
+.schedules {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scheduleOption {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scheduleInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.seatsInfo {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.bookBtn {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-text-primary);
+  color: var(--color-surface);
+  font-weight: 600;
+  transition: var(--transition-fast);
+}
+
+.bookBtn:hover:not(:disabled) {
+  background-color: var(--color-primary);
+}
+
+.bookBtn:disabled {
+  background-color: var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
