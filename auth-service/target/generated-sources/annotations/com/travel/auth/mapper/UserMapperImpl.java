@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-08-07T15:37:37+0700",
-    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Oracle Corporation)"
+    date = "2026-08-17T22:39:16+0700",
+    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.46.100.v20260624-0231, environment: Java 21.0.11 (Eclipse Adoptium)"
 )
 @Component
 public class UserMapperImpl implements UserMapper {
@@ -49,11 +49,11 @@ public class UserMapperImpl implements UserMapper {
         userProfileVm.status( profileUserStatus( profile ) );
         Set<RoleEntity> roles = profileUserRoles( profile );
         userProfileVm.roles( mapRoleEntitiesToRoleCodes( roles ) );
+        userProfileVm.avatarUrl( profile.getAvatarUrl() );
+        userProfileVm.dateOfBirth( profile.getDateOfBirth() );
+        userProfileVm.emergencyContact( profile.getEmergencyContact() );
         userProfileVm.fullName( profile.getFullName() );
         userProfileVm.phoneNumber( profile.getPhoneNumber() );
-        userProfileVm.dateOfBirth( profile.getDateOfBirth() );
-        userProfileVm.avatarUrl( profile.getAvatarUrl() );
-        userProfileVm.emergencyContact( profile.getEmergencyContact() );
 
         return userProfileVm.build();
     }

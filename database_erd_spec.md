@@ -343,7 +343,7 @@ erDiagram
 * `chunk_type` (VARCHAR(50), NOT NULL): Loại phân đoạn (`METADATA` hoặc `ITINERARY_DAY`).
 * `content` (TEXT, NOT NULL): Nội dung văn bản phân đoạn dùng để sinh Vector Embedding.
 * `metadata` (JSONB, NULL): Chứa thông tin lọc cứng (như `tour_code`, `price`, `location`) cho Metadata Filtering trong RAG.
-* `embedding_1536` (`vector(1536)`, NOT NULL): Tọa độ Vector Embedding 1536 chiều sinh bởi OpenAI `text-embedding-3-small`.
+* `embedding_1536` (`vector(1536)`, NOT NULL): Tọa độ Vector Embedding 1536 chiều sinh bởi Google Gemini (`text-embedding-004`), Ollama, hoặc OpenAI.
 
 #### Bảng `chat_sessions` & `chat_messages` (Lịch sử Chatbot)
 * `sender_type` (VARCHAR(20), NOT NULL): Người gửi (`USER`, `ASSISTANT`).

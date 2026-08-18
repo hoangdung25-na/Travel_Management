@@ -9,7 +9,7 @@ import com.travel.auth.viewmodel.AuthTokenVm;
 import com.travel.auth.viewmodel.UserProfileVm;
 import com.travel.auth.viewmodel.UserVm;
 import com.travel.common.core.dto.ApiResponse;
-import com.travel.common.core.exception.BadRequestException;
+import com.travel.common.core.exception.BusinessException;
 import com.travel.common.security.context.UserContext;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +56,7 @@ public class AuthController {
             @RequestHeader(value = "X-User-Id", required = false) String headerUserId) {
         String userIdStr = UserContext.getUserId() != null ? UserContext.getUserId() : headerUserId;
         if (userIdStr == null || userIdStr.isBlank()) {
-            throw new BadRequestException("Thiếu thông tin người dùng xác thực (X-User-Id)");
+            throw BusinessException.badRequest("Thiếu thông tin người dùng xác thực (X-User-Id)");
         }
         UUID userId = UUID.fromString(userIdStr);
         UserProfileVm profileVm = authService.getProfile(userId);
@@ -70,7 +70,7 @@ public class AuthController {
             @RequestPart(value = "avatar", required = false) MultipartFile avatarFile) {
         String userIdStr = UserContext.getUserId() != null ? UserContext.getUserId() : headerUserId;
         if (userIdStr == null || userIdStr.isBlank()) {
-            throw new BadRequestException("Thiếu thông tin người dùng xác thực (X-User-Id)");
+            throw BusinessException.badRequest("Thiếu thông tin người dùng xác thực (X-User-Id)");
         }
         UUID userId = UUID.fromString(userIdStr);
         if (request == null) {

@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.travel.booking.service.BookingSagaStateDomainServiceTest
+-------------------------------------------------------------------------------
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.237 s -- in com.travel.booking.service.BookingSagaStateDomainServiceTest

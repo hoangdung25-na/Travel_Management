@@ -2,7 +2,8 @@ package com.travel.auth.service.impl;
 
 import com.travel.auth.service.KeycloakService;
 import com.travel.auth.viewmodel.AuthTokenVm;
-import com.travel.common.core.exception.BadRequestException;
+import com.travel.common.core.exception.BusinessException;
+import com.travel.common.core.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -38,11 +39,10 @@ public class KeycloakServiceImpl implements KeycloakService {
     @Override
     public String createKeycloakUser(String email, String password, String fullName) {
         log.info("Creating user in Keycloak for email: {}", email);
-        // Note: In local/dev environment without active Keycloak admin token, return mock Keycloak ID
         try {
             String tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", serverUrl, realm);
             log.debug("Keycloak token URL: {}", tokenUrl);
-            return email; // Uses email as keycloak identity identifier
+            return email;
         } catch (Exception e) {
             log.warn("Keycloak call failed, fallbacking to local identity: {}", e.getMessage());
             return email;
@@ -53,14 +53,12 @@ public class KeycloakServiceImpl implements KeycloakService {
     public AuthTokenVm authenticate(String username, String password) {
         log.info("Authenticating user with Keycloak: {}", username);
         String tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", serverUrl, realm);
-
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "password");
         formData.add("client_id", clientId);
         formData.add("client_secret", clientSecret);
         formData.add("username", username);
         formData.add("password", password);
-
         try {
             Map response = restClient.post()
                     .uri(tokenUrl)
@@ -68,7 +66,6 @@ public class KeycloakServiceImpl implements KeycloakService {
                     .body(formData)
                     .retrieve()
                     .body(Map.class);
-
             if (response != null && response.containsKey("access_token")) {
                 return AuthTokenVm.builder()
                         .accessToken((String) response.get("access_token"))
@@ -79,17 +76,15 @@ public class KeycloakServiceImpl implements KeycloakService {
             }
         } catch (Exception e) {
             log.error("Failed to authenticate user against Keycloak: {}", e.getMessage());
-            throw new BadRequestException("Mật khẩu hoặc Tên đăng nhập không chính xác");
+            throw BusinessException.of(ErrorCode.AUTH_INVALID_CREDENTIALS, "Mật khẩu hoặc Tên đăng nhập không chính xác");
         }
-
-        throw new BadRequestException("Xác thực Keycloak thất bại");
+        throw BusinessException.of(ErrorCode.AUTH_INVALID_CREDENTIALS, "Xác thực Keycloak thất bại");
     }
 
     @Override
     public AuthTokenVm refreshToken(String refreshToken) {
         log.info("Refreshing access token via Keycloak");
         String tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", serverUrl, realm);
-
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "refresh_token");
         formData.add("client_id", clientId);
@@ -114,9 +109,8 @@ public class KeycloakServiceImpl implements KeycloakService {
             }
         } catch (Exception e) {
             log.error("Failed to refresh token via Keycloak: {}", e.getMessage());
-            throw new BadRequestException("Refresh token không hợp lệ hoặc đã hết hạn");
+            throw BusinessException.of(ErrorCode.AUTH_TOKEN_INVALID, "Refresh token không hợp lệ hoặc đã hết hạn");
         }
-
-        throw new BadRequestException("Làm mới token thất bại");
+        throw BusinessException.of(ErrorCode.AUTH_TOKEN_INVALID, "Làm mới token thất bại");
     }
 }

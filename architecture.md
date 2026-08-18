@@ -48,7 +48,7 @@ Nhiệm vụ: Xử lý giao dịch thanh toán tiền tour (VNPAY, MOMO, Stripe)
 Core Aggregates: Payment (Aggregate Root), PaymentTransaction.
 Database: db_travel_payment (PostgreSQL - Port 5435).
 5. AI Service (ai-service)
-Nhiệm vụ: Cung cấp AI Assistant tư vấn lịch trình du lịch thông minh, tìm kiếm ngữ nghĩa (RAG) và phân tích phản hồi du khách bằng Spring AI / OpenAI API.
+Nhiệm vụ: Cung cấp AI Assistant tư vấn lịch trình du lịch thông minh, tìm kiếm ngữ nghĩa (RAG) và phân tích phản hồi du khách bằng Spring AI (tích hợp linh hoạt Google Gemini Free Tier / Ollama Local / OpenAI API).
 Core Aggregates: TripRecommendation, ChatSession.
 Database: db_travel_ai (PostgreSQL + pgvector - Port 5436).
 3. THƯ VIỆN CHUNG common-lib

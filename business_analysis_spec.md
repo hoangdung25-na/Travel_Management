@@ -377,7 +377,7 @@
 ### 5.1. Chức năng: Gợi ý Lịch trình Du lịch Thông minh (Smart Trip Recommendation)
 * **Actor:** Du khách (Tourist), Khách vãng lai.
 * **Business Goal:** Tự động tạo gợi ý lịch trình du lịch cá nhân hóa dựa trên sở thích, ngân sách, số ngày đi và thành phần đoàn du lịch.
-* **Preconditions:** Dịch vụ AI Service hoạt động, LLM Model (OpenAI/Ollama) sẵn sàng.
+* **Preconditions:** Dịch vụ AI Service hoạt động, LLM Model (Google Gemini / Ollama / OpenAI) sẵn sàng.
 * **Main Flow:**
   1. Khách hàng nhập nhu cầu (Ví dụ: "Tôi muốn đi du lịch nghỉ dưỡng 3 ngày 2 đêm tại Nha Trang cho gia đình có con nhỏ, ngân sách 10 triệu").
   2. `ai-service` chuyển đổi câu hỏi thành Vector Embedding (1536 chiều).

@@ -19,9 +19,8 @@ import com.travel.auth.service.KeycloakService;
 import com.travel.auth.viewmodel.AuthTokenVm;
 import com.travel.auth.viewmodel.UserProfileVm;
 import com.travel.auth.viewmodel.UserVm;
-import com.travel.common.core.exception.BadRequestException;
-import com.travel.common.core.exception.DuplicatedException;
-import com.travel.common.core.exception.NotFoundException;
+import com.travel.common.core.exception.BusinessException;
+import com.travel.common.core.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -53,7 +52,7 @@ public class AuthServiceImpl implements AuthService {
         log.info("Processing user registration for email: {}", request.getEmail());
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicatedException("Email đã được sử dụng bởi tài khoản khác: " + request.getEmail());
+            throw BusinessException.of(ErrorCode.AUTH_EMAIL_EXISTS, "Email đã được sử dụng bởi tài khoản khác: " + request.getEmail());
         }
 
         RoleCode targetRoleCode = (request.getAccountType() == AccountType.GUIDE) 
@@ -105,10 +104,10 @@ public class AuthServiceImpl implements AuthService {
         if (userOpt.isPresent()) {
             UserEntity user = userOpt.get();
             if (user.getStatus() == AccountStatus.BLOCKED) {
-                throw new BadRequestException("Tài khoản đang bị khóa. Vui lòng liên hệ quản trị viên.");
+                throw BusinessException.badRequest("Tài khoản đang bị khóa. Vui lòng liên hệ quản trị viên.");
             }
             if (user.getStatus() == AccountStatus.PENDING_APPROVAL) {
-                throw new BadRequestException("Tài khoản đang chờ quản trị viên phê duyệt.");
+                throw BusinessException.badRequest("Tài khoản đang chờ quản trị viên phê duyệt.");
             }
         }
 
@@ -126,7 +125,7 @@ public class AuthServiceImpl implements AuthService {
     public UserProfileVm getProfile(UUID userId) {
         log.info("Fetching profile for user ID: {}", userId);
         UserProfileEntity profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy hồ sơ người dùng cho ID: " + userId));
+                .orElseThrow(() -> BusinessException.of(ErrorCode.AUTH_USER_NOT_FOUND, "Không tìm thấy hồ sơ người dùng cho ID: " + userId));
 
         return userMapper.toUserProfileVm(profile);
     }
@@ -137,7 +136,7 @@ public class AuthServiceImpl implements AuthService {
         log.info("Updating profile for user ID: {}", userId);
 
         UserProfileEntity profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy hồ sơ người dùng cho ID: " + userId));
+                .orElseThrow(() -> BusinessException.of(ErrorCode.AUTH_USER_NOT_FOUND, "Không tìm thấy hồ sơ người dùng cho ID: " + userId));
 
         if (request.getFullName() != null && !request.getFullName().isBlank()) {
             profile.setFullName(request.getFullName());
@@ -153,7 +152,6 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (avatarFile != null && !avatarFile.isEmpty()) {
-            // Future extension: Store avatar to MinIO using StorageService
             String avatarUrl = "/uploads/avatars/" + userId + "_" + avatarFile.getOriginalFilename();
             profile.setAvatarUrl(avatarUrl);
         }
@@ -168,7 +166,7 @@ public class AuthServiceImpl implements AuthService {
         log.info("Updating status for user ID: {} to {}", userId, status);
 
         UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy người dùng cho ID: " + userId));
+                .orElseThrow(() -> BusinessException.of(ErrorCode.AUTH_USER_NOT_FOUND, "Không tìm thấy người dùng cho ID: " + userId));
 
         user.setStatus(status);
         UserEntity updatedUser = userRepository.save(user);

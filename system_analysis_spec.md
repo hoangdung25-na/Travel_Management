@@ -162,7 +162,7 @@
 * **Luồng xử lý hệ thống:**
   1. `ai-service` chuyển `promptText` thành Vector Embedding qua Embedding Model.
   2. Truy vấn `db_travel_ai` (pgvector) bằng kỹ thuật Cosine Similarity để lấy các đoạn văn bản Tour/Điểm đến liên quan nhất.
-  3. Tổng hợp Context thu được và dựng Prompt chuẩn gửi sang LLM (OpenAI API).
+  3. Tổng hợp Context thu được và dựng Prompt chuẩn gửi sang LLM (Google Gemini Free / Ollama Local / OpenAI API).
   4. Phân tích kết quả từ LLM và trả về bài tư vấn hoàn chỉnh.
 
 ---
@@ -355,7 +355,7 @@ sequenceDiagram
     participant R as Redis Cache
     participant Emb as Embedding Model
     participant VDB as db_travel_ai (pgvector)
-    participant LLM as OpenAI API Server
+    participant LLM as LLM Provider (Google Gemini / Ollama / OpenAI)
 
     C->>GW: POST /api/v1/ai/recommendations (Prompt: "Nha Trang 3N2Đ cho gia đình")
     GW->>AI: Forward Request

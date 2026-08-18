@@ -24,7 +24,7 @@ flowchart TD
     subgraph PIPELINE_1 [1. Data Ingestion & Indexing Pipeline]
         A[tour-service DB] -->|Kafka Event: TourUpdatedEvent| B[ai-service Event Consumer]
         B --> C[Text Chunking & Document Splitter]
-        C --> D[Embedding Model: text-embedding-3-small]
+        C --> D[Embedding Model: Google Gemini text-embedding-004 / Ollama / OpenAI]
         D --> E[(pgvector: tour_embeddings)]
     end
 
@@ -37,7 +37,7 @@ flowchart TD
 
     subgraph PIPELINE_3 [3. Generation & Prompt Pipeline]
         J --> K[Prompt Template Assembly]
-        K --> L[LLM Model: GPT-4o / Ollama Llama3]
+        K --> L[LLM Model: Google Gemini 1.5/2.0 Flash / Ollama Llama3 / GPT-4o]
         L --> M[Structured Output: TripRecommendationVm]
     end
 ```
@@ -57,7 +57,7 @@ flowchart TD
   * **Chunk 2..N (Itinerary Day Chunks):** Lịch trình chi tiết theo từng ngày (Ví dụ: "Ngày 1: Tham quan Chùa Linh Ứng - Tắm biển Mỹ Khê - Ăn tối hải sản").
 
 ### 1.3. Tạo Vector Embedding & Lưu vào `pgvector`
-* Sử dụng **Spring AI `EmbeddingModel`** (trỏ tới OpenAI `text-embedding-3-small` 1536 dimensions hoặc Local Ollama `bge-m3`).
+* Sử dụng **Spring AI `EmbeddingModel`**: Có thể kết nối linh hoạt tới **Google Gemini Free Tier** (`text-embedding-004` 768/1536 dims), **Local Ollama** (`nomic-embed-text` / `bge-m3`), hoặc **OpenAI** (`text-embedding-3-small` 1536 dims).
 * Lưu bản ghi vào bảng `tour_embeddings` trong PostgreSQL với chỉ mục **HNSW Index** để truy vấn siêu tốc:
   ```sql
   -- Cấu trúc lưu trữ Vector trong db_travel_ai
@@ -154,9 +154,9 @@ sequenceDiagram
     autonumber
     actor Client
     participant AI as ai-service (Port 8085)
-    participant Emb as Embedding Service
+    participant Emb as Embedding Service (Google Gemini / Ollama / OpenAI)
     participant VDB as PostgreSQL (pgvector)
-    participant LLM as LLM Provider (OpenAI/Ollama)
+    participant LLM as LLM Provider (Google Gemini Free / Ollama / OpenAI)
 
     Client->>AI: POST /api/v1/ai/recommendations (Query Text)
     AI->>Emb: Embed Query Text
@@ -174,5 +174,6 @@ sequenceDiagram
 # IV. NGUYÊN TẮC BẢO VỆ & TỐI ƯU HÓA RAG TRONG THỰC TẾ (GUARDRAILS & OPTIMIZATION)
 
 1. **Chống Trôi Dữ liệu (Drift Guardrail):** Khi `tour-service` cập nhật giá hoặc sửa thông tin Tour, phải xoá/cập nhật ngay Chunk Vector cũ trong `db_travel_ai` để tránh AI tư vấn theo giá cũ.
-2. **Caching Câu hỏi Phổ biến (Semantic Caching):** Sử dụng Redis lưu lại cặp `(Query Vector, LLM Response)` cho các câu hỏi phổ biến (ví dụ: *"Các tour đi Đà Nẵng giá rẻ"*). Nếu câu hỏi mới có độ tương đồng Vector $\ge 0.95$ với câu hỏi cũ trong Cache $\rightarrow$ Trả về kết quả ngay mà không cần gọi LLM, tiết kiệm 90% chi phí API.
-3. **Giới hạn Rate Limit:** Áp dụng Hạn mức (Quota Limit) theo `userId` (ví dụ: Tối đa 20 lượt gọi AI RAG / ngày đối với tài khoản thường) để tránh bị lạm dụng API OpenAI.
+2. **Caching Câu hỏi Phổ biến (Semantic Caching):** Sử dụng Redis lưu lại cặp `(Query Vector, LLM Response)` cho các câu hỏi phổ biến (ví dụ: *"Các tour đi Đà Nẵng giá rẻ"*). Nếu câu hỏi mới có độ tương đồng Vector $\ge 0.95$ với câu hỏi cũ trong Cache $\rightarrow$ Trả về kết quả ngay mà không cần gọi LLM, tiết kiệm 90% chi phí API / Quota.
+3. **Giới hạn Rate Limit:** Áp dụng Hạn mức (Quota Limit) theo `userId` (ví dụ: Tối đa 20 lượt gọi AI RAG / ngày đối với tài khoản thường) để tránh bị lạm dụng API AI hoặc vượt quá Free Tier Quota của Gemini/Ollama.
+4. **Tính Độc Lập Provider (Provider Agnostic):** Kiến trúc RAG cho phép chuyển đổi linh hoạt giữa các LLM Provider (Google Gemini Free Tier, Ollama Local 0 đồng, hoặc OpenAI) chỉ bằng cách đổi cấu hình `application.yml` trong `ai-service` mà không cần viết lại logic code.
