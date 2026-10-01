@@ -76,7 +76,7 @@ public class TourServiceImpl implements TourService {
         TourEntity savedTour = tourRepository.save(tour);
 
         // Ghi bản tin Outbox Event để báo cho ai-service cập nhật Vector Embeddings
-        saveOutboxEvent("TourUpdatedEvent", savedTour.getId().toString(), tourMapper.toTourVm(savedTour));
+        saveOutboxEvent("TourUpdatedEvent", savedTour.getId().toString(), tourMapper.toTourDetailVm(savedTour));
 
         log.info("Tạo Tour thành công với ID: {}", savedTour.getId());
         return tourMapper.toTourDetailVm(savedTour);
@@ -86,8 +86,37 @@ public class TourServiceImpl implements TourService {
     @Transactional(readOnly = true)
     public TourDetailVm getTourById(UUID id) {
         log.info("Tra cứu chi tiết Tour ID: {}", id);
-        TourEntity tour = tourRepository.findByIdWithDetails(id)
+        TourEntity tour = tourRepository.findById(id)
                 .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_NOT_FOUND, "Không tìm thấy Tour với ID: " + id));
+
+        if (tour.getItineraries() != null) tour.getItineraries().size();
+        if (tour.getSchedules() != null) tour.getSchedules().size();
+        if (tour.getDestinations() != null) tour.getDestinations().size();
+
+        return tourMapper.toTourDetailVm(tour);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TourDetailVm getTourById(String idOrCode) {
+        log.info("Tra cứu chi tiết Tour ID/Code: {}", idOrCode);
+        TourEntity tour = null;
+
+        try {
+            UUID uuid = UUID.fromString(idOrCode);
+            tour = tourRepository.findById(uuid).orElse(null);
+        } catch (IllegalArgumentException ignored) {
+        }
+
+        if (tour == null) {
+            tour = tourRepository.findByCode(idOrCode)
+                    .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_NOT_FOUND, "Không tìm thấy Tour với mã/ID: " + idOrCode));
+        }
+
+        if (tour.getItineraries() != null) tour.getItineraries().size();
+        if (tour.getSchedules() != null) tour.getSchedules().size();
+        if (tour.getDestinations() != null) tour.getDestinations().size();
+
         return tourMapper.toTourDetailVm(tour);
     }
 
@@ -110,7 +139,7 @@ public class TourServiceImpl implements TourService {
         }
 
         TourEntity updatedTour = tourRepository.save(tour);
-        saveOutboxEvent("TourUpdatedEvent", updatedTour.getId().toString(), tourMapper.toTourVm(updatedTour));
+        saveOutboxEvent("TourUpdatedEvent", updatedTour.getId().toString(), tourMapper.toTourDetailVm(updatedTour));
 
         return tourMapper.toTourDetailVm(updatedTour);
     }
@@ -126,9 +155,18 @@ public class TourServiceImpl implements TourService {
         schedule.setTour(tour);
 
         TourScheduleEntity savedSchedule = tourScheduleRepository.save(schedule);
-        saveOutboxEvent("TourUpdatedEvent", tour.getId().toString(), tourMapper.toTourVm(tour));
+        saveOutboxEvent("TourUpdatedEvent", tour.getId().toString(), tourMapper.toTourDetailVm(tour));
 
         return tourScheduleMapper.toVm(savedSchedule);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TourScheduleVm getScheduleById(UUID scheduleId) {
+        log.info("Tra cứu thông tin lịch khởi hành ID: {}", scheduleId);
+        TourScheduleEntity schedule = tourScheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_SCHEDULE_NOT_FOUND, "Không tìm thấy lịch khởi hành ID: " + scheduleId));
+        return tourScheduleMapper.toVm(schedule);
     }
 
     @Override

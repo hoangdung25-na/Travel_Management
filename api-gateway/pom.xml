@@ -14,8 +14,17 @@
     <artifactId>api-gateway</artifactId>
     <packaging>jar</packaging>
     <name>api-gateway</name>
-
     <dependencies>
+        <dependency>
+            <groupId>com.travel</groupId>
+            <artifactId>common-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>
@@ -31,6 +40,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.travel.gateway.ApiGatewayApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

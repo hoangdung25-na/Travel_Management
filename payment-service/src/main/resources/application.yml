@@ -4,7 +4,59 @@ server:
 spring:
   application:
     name: payment-service
+
+  # 1. Cấu hình Database PostgreSQL (db_travel_payment - Port 5435)
   datasource:
-    url: jdbc:postgresql://localhost:5435/db_travel_payment
-    username: postgres
-    password: postgrespassword
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/db_travel_payment}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgrespassword}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # 2. Cấu hình Redis Cache & Idempotency Key (Port 6379)
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      timeout: 3000ms
+
+  # 3. Cấu hình Kafka (Port 29092 / 9092)
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: payment-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+# 4. Cấu hình Cổng thanh toán VNPAY Sandbox
+payment:
+  vnpay:
+    tmn-code: ${VNPAY_TMN_CODE:TRAVEL01}
+    hash-secret: ${VNPAY_HASH_SECRET:TRAVELSECRETKEY888888888888888}
+    pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+    return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/payments/vnpay-callback}
+    version: "2.1.0"
+    command: "pay"
+    curr-code: "VND"
+    locale: "vn"
+
+# 5. Logging Standard
+logging:
+  level:
+    root: INFO
+    com.travel.payment: DEBUG
+    org.hibernate.SQL: DEBUG

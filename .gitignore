@@ -1,1 +1,46 @@
+# Environment variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Compiled Java output & Maven
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Node & Next.js dependencies / build outputs
+**/node_modules/
+**/.next/
+**/out/
+**/build/
+**/dist/
+.npm
+*.tsbuildinfo
+
+# IDE & Editor files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+
+# Logs & Databases
+*.log
+*.sqlite
+*.db
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+
+# Markdown files
+*.md

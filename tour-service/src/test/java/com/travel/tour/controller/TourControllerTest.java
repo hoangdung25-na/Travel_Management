@@ -89,7 +89,7 @@ class TourControllerTest {
                 .status(TourStatus.PUBLISHED)
                 .build();
 
-        when(tourService.getTourById(tourId)).thenReturn(responseVm);
+        when(tourService.getTourById(tourId.toString())).thenReturn(responseVm);
 
         mockMvc.perform(get("/api/v1/tours/{id}", tourId)
                         .contentType(MediaType.APPLICATION_JSON))

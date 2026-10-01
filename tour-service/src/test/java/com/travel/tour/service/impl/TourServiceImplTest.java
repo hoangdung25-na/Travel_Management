@@ -145,7 +145,7 @@ class TourServiceImplTest {
     @DisplayName("getTourById - Trả về chi tiết Tour thành công khi ID hợp lệ")
     void getTourById_Success() {
         // Given
-        when(tourRepository.findByIdWithDetails(tourId)).thenReturn(Optional.of(tourEntity));
+        when(tourRepository.findById(tourId)).thenReturn(Optional.of(tourEntity));
         when(tourMapper.toTourDetailVm(tourEntity)).thenReturn(tourDetailVm);
 
         // When
@@ -154,14 +154,14 @@ class TourServiceImplTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.tourId()).isEqualTo(tourId);
-        verify(tourRepository, times(1)).findByIdWithDetails(tourId);
+        verify(tourRepository, times(1)).findById(tourId);
     }
 
     @Test
     @DisplayName("getTourById - Thất bại khi không tìm thấy Tour (Quăng TOUR_NOT_FOUND)")
     void getTourById_NotFound_ThrowsException() {
         // Given
-        when(tourRepository.findByIdWithDetails(tourId)).thenReturn(Optional.empty());
+        when(tourRepository.findById(tourId)).thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> tourService.getTourById(tourId))

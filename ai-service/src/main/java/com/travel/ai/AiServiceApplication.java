@@ -3,7 +3,7 @@ package com.travel.ai;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.travel")
 public class AiServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(AiServiceApplication.class, args);

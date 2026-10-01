@@ -157,3 +157,203 @@ services:
     depends_on:
       travel-kafka:
         condition: service_healthy
+
+  # ============================================================================
+  # 4. KHO CONTAINER ỨNG DỤNG (APPLICATION MICROSERVICES & FRONTEND)
+  # ============================================================================
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 5: API GATEWAY (Port 8080)
+  # ----------------------------------------------------------------------------
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: travel-api-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=travel-kafka:9092
+      - SPRING_REDIS_HOST=travel-redis
+      - SPRING_REDIS_PORT=6379
+      - AUTH_SERVICE_URL=http://auth-service:8081
+      - TOUR_SERVICE_URL=http://tour-service:8082
+      - BOOKING_SERVICE_URL=http://booking-service:8083
+      - PAYMENT_SERVICE_URL=http://payment-service:8084
+      - AI_SERVICE_URL=http://ai-service:8085
+    networks:
+      - travel-network
+    depends_on:
+      travel-postgres:
+        condition: service_healthy
+      travel-redis:
+        condition: service_healthy
+      travel-kafka:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 6: AUTH SERVICE (Port 8081)
+  # ----------------------------------------------------------------------------
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    container_name: travel-auth-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://travel-postgres:5432/db_travel_auth
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
+      - SPRING_REDIS_HOST=travel-redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=travel-kafka:9092
+    networks:
+      - travel-network
+    depends_on:
+      travel-postgres:
+        condition: service_healthy
+      travel-redis:
+        condition: service_healthy
+      travel-kafka:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 7: TOUR SERVICE (Port 8082)
+  # ----------------------------------------------------------------------------
+  tour-service:
+    build:
+      context: .
+      dockerfile: tour-service/Dockerfile
+    container_name: travel-tour-service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://travel-postgres:5432/db_travel_tour
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
+      - SPRING_REDIS_HOST=travel-redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=travel-kafka:9092
+    networks:
+      - travel-network
+    depends_on:
+      travel-postgres:
+        condition: service_healthy
+      travel-redis:
+        condition: service_healthy
+      travel-kafka:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 8: BOOKING SERVICE (Port 8083)
+  # ----------------------------------------------------------------------------
+  booking-service:
+    build:
+      context: .
+      dockerfile: booking-service/Dockerfile
+    container_name: travel-booking-service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://travel-postgres:5432/db_travel_booking
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
+      - SPRING_REDIS_HOST=travel-redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=travel-kafka:9092
+    networks:
+      - travel-network
+    depends_on:
+      travel-postgres:
+        condition: service_healthy
+      travel-redis:
+        condition: service_healthy
+      travel-kafka:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 9: PAYMENT SERVICE (Port 8084)
+  # ----------------------------------------------------------------------------
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    container_name: travel-payment-service
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://travel-postgres:5432/db_travel_payment
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
+      - SPRING_REDIS_HOST=travel-redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=travel-kafka:9092
+    networks:
+      - travel-network
+    depends_on:
+      travel-postgres:
+        condition: service_healthy
+      travel-redis:
+        condition: service_healthy
+      travel-kafka:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 10: AI SERVICE (Port 8085)
+  # ----------------------------------------------------------------------------
+  ai-service:
+    build:
+      context: .
+      dockerfile: ai-service/Dockerfile
+    container_name: travel-ai-service
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://travel-postgres:5432/db_travel_ai
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
+      - SPRING_REDIS_HOST=travel-redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=travel-kafka:9092
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    networks:
+      - travel-network
+    depends_on:
+      travel-postgres:
+        condition: service_healthy
+      travel-redis:
+        condition: service_healthy
+      travel-kafka:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 11: TRAVEL FRONTEND (NEXT.JS - Port 3000)
+  # ----------------------------------------------------------------------------
+  travel-frontend:
+    build:
+      context: ./travel-frontend
+      dockerfile: Dockerfile
+    container_name: travel-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    networks:
+      - travel-network
+    depends_on:
+      - api-gateway
+

@@ -17,9 +17,13 @@ public interface TourService {
 
     TourDetailVm getTourById(UUID id);
 
+    TourDetailVm getTourById(String idOrCode);
+
     TourDetailVm updateTour(UUID id, UpdateTourRequest request);
 
     TourScheduleVm addSchedule(UUID tourId, CreateScheduleRequest request);
+
+    TourScheduleVm getScheduleById(UUID scheduleId);
 
     Page<TourVm> searchTours(TourSearchCriteria criteria);
 }

@@ -1,3 +1,0 @@
-com\travel\common\kafka\package-info.class
-com\travel\common\kafka\event\AbstractEventPayload.class
-com\travel\common\kafka\idempotency\IdempotencyService.class

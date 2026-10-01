@@ -1,5 +1,0 @@
-com\travel\gateway\ApiGatewayApplication.class
-com\travel\gateway\config\GatewayConfig.class
-com\travel\gateway\routes\GatewayRoutesConfig.class
-com\travel\gateway\security\SecurityConfig.class
-com\travel\gateway\filter\GlobalHeaderFilter.class

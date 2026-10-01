@@ -1,0 +1,12 @@
+.git
+.gitignore
+.vscode
+.idea
+**/target/
+**/node_modules/
+**/.next/
+**/dist/
+*.md
+chay.txt
+start-all.ps1
+start-all.bat

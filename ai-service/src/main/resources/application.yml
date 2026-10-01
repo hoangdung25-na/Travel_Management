@@ -4,7 +4,63 @@ server:
 spring:
   application:
     name: ai-service
+
   datasource:
-    url: jdbc:postgresql://localhost:5436/db_travel_ai
-    username: postgres
-    password: postgrespassword
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/db_travel_ai}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgrespassword}
+    driver-class-name: org.postgresql.Driver
+
+  sql:
+    init:
+      mode: always
+
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      timeout: 2000ms
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: ai-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+  ai:
+    openai:
+      # Sử dụng Google Gemini Free Tier qua OpenAI-Compatible API Endpoint của Google AI Studio
+      api-key: ${GEMINI_API_KEY}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai/}
+      chat:
+        options:
+          model: ${GEMINI_CHAT_MODEL:gemini-3.6-flash}
+          temperature: 0.3
+      embedding:
+        options:
+          model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768 # Google Gemini text-embedding-004 tạo Vector 768 chiều
+        table-name: tour_embeddings
+
+

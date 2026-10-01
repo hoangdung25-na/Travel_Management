@@ -22,11 +22,19 @@
         </dependency>
         <dependency>
             <groupId>com.travel</groupId>
+            <artifactId>common-spring</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.travel</groupId>
             <artifactId>common-security</artifactId>
         </dependency>
         <dependency>
             <groupId>com.travel</groupId>
             <artifactId>common-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.travel</groupId>
+            <artifactId>common-logging</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -37,9 +45,27 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -48,6 +74,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.travel.payment.PaymentServiceApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

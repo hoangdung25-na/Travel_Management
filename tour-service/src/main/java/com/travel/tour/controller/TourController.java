@@ -42,8 +42,8 @@ public class TourController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<TourDetailVm> getTourById(@PathVariable UUID id) {
-        log.info("REST request lấy chi tiết Tour ID: {}", id);
+    public ApiResponse<TourDetailVm> getTourById(@PathVariable String id) {
+        log.info("REST request lấy chi tiết Tour ID/Code: {}", id);
         TourDetailVm tourDetailVm = tourService.getTourById(id);
         return ApiResponse.ok(tourDetailVm, "Lấy chi tiết Tour thành công");
     }
@@ -61,5 +61,12 @@ public class TourController {
         log.info("REST request thêm lịch khởi hành cho Tour ID: {}", id);
         TourScheduleVm scheduleVm = tourService.addSchedule(id, request);
         return ApiResponse.ok(scheduleVm, "Thêm lịch khởi hành thành công");
+    }
+
+    @GetMapping("/schedules/{scheduleId}")
+    public ApiResponse<TourScheduleVm> getScheduleById(@PathVariable UUID scheduleId) {
+        log.info("REST request lấy chi tiết lịch khởi hành ID: {}", scheduleId);
+        TourScheduleVm scheduleVm = tourService.getScheduleById(scheduleId);
+        return ApiResponse.ok(scheduleVm, "Lấy chi tiết lịch khởi hành thành công");
     }
 }

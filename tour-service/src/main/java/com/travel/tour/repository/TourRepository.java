@@ -23,4 +23,11 @@ public interface TourRepository extends JpaRepository<TourEntity, UUID>, JpaSpec
            "LEFT JOIN FETCH t.destinations " +
            "WHERE t.id = :id")
     Optional<TourEntity> findByIdWithDetails(@Param("id") UUID id);
+
+    @Query("SELECT DISTINCT t FROM TourEntity t " +
+           "LEFT JOIN FETCH t.itineraries " +
+           "LEFT JOIN FETCH t.schedules " +
+           "LEFT JOIN FETCH t.destinations " +
+           "WHERE t.code = :code")
+    Optional<TourEntity> findByCodeWithDetails(@Param("code") String code);
 }
