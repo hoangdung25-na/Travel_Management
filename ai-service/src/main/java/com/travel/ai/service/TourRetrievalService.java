@@ -14,4 +14,9 @@ public interface TourRetrievalService {
      * Tìm kiếm Top K đoạn văn bản (Chunks) liên quan nhất dựa trên Cosine Similarity và Điều kiện lọc cứng
      */
     List<RetrievedChunkDto> retrieveRelevantChunks(AiQueryRequest request);
+
+    /**
+     * Tìm kiếm Top K đoạn tri thức (bao gồm cả Tour và Chính sách công ty) phục vụ Chatbot RAG
+     */
+    List<RetrievedChunkDto> retrieveKnowledgeChunks(String queryText, int limit);
 }

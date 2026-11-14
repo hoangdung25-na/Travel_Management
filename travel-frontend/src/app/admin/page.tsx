@@ -12,7 +12,9 @@ import {
   Plus,
   CheckCircle2,
 } from "lucide-react";
-import { MockStore } from "@/lib/mock-store";
+import { adminService } from "@/lib/services/admin-service";
+import { bookingService } from "@/lib/services/booking-service";
+import { tourService } from "@/lib/services/tour-service";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { BookingDetailVm, UserVm, TourDetailVm } from "@/lib/types";
 
@@ -22,9 +24,9 @@ export default function AdminDashboardPage() {
   const [users, setUsers] = useState<UserVm[]>([]);
 
   useEffect(() => {
-    setBookings(MockStore.getAllBookings());
-    setTours(MockStore.getTours({ size: 100 }).content as any);
-    setUsers(MockStore.getUsers());
+    bookingService.getAllBookings().then(setBookings).catch(() => setBookings([]));
+    tourService.search({ page: 0, size: 100 }).then((res) => setTours((res?.content ?? []) as any)).catch(() => setTours([]));
+    adminService.getUsers().then(setUsers).catch(() => setUsers([]));
   }, []);
 
   const totalRevenue = bookings

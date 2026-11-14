@@ -13,12 +13,9 @@ export function Footer() {
             <span>Travel Platform</span>
           </div>
           <p className="text-stone-400 text-xs leading-relaxed max-w-sm mb-4">
-            Hệ thống quản lý & đặt tour du lịch thông minh thiết kế theo kiến trúc Microservices chuẩn Event-Driven (Saga Pattern, Kafka Outbox, Redis Cache, Trợ lý AI Vector Search & Keycloak Security).
+            Hệ thống quản lý & đặt tour du lịch thông minh.
           </p>
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1 text-[11px] bg-[#0D2B2B] border border-[#123A3A] text-stone-300 px-2.5 py-1 rounded-md">
-              <ShieldCheck size={12} className="text-[#D4A24C]" /> Keycloak Auth
-            </span>
             <span className="inline-flex items-center gap-1 text-[11px] bg-[#0D2B2B] border border-[#123A3A] text-[#D4A24C] px-2.5 py-1 rounded-md">
               <Sparkles size={12} className="text-[#D4A24C]" /> Gợi ý lịch trình thông minh
             </span>

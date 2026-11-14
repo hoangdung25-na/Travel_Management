@@ -20,8 +20,6 @@ import { TourVm, DestinationVm } from "@/lib/types";
 import { TourCard } from "@/components/tours/TourCard";
 import { TourCardSkeleton } from "@/components/tours/TourCardSkeleton";
 
-import { MOCK_TOURS, MOCK_DESTINATIONS } from "@/lib/mock-data";
-
 export default function HomePage() {
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
@@ -33,24 +31,16 @@ export default function HomePage() {
     tourService
       .search({ page: 0, size: 6 })
       .then((res) => {
-        if (res?.content && res.content.length > 0) {
-          setFeatured(res.content);
-        } else {
-          setFeatured(MOCK_TOURS as any);
-        }
+        setFeatured(res?.content ?? []);
       })
-      .catch(() => setFeatured(MOCK_TOURS as any));
+      .catch(() => setFeatured([]));
 
     tourService
       .listDestinations()
       .then((res) => {
-        if (res && res.length > 0) {
-          setDestinations(res);
-        } else {
-          setDestinations(MOCK_DESTINATIONS);
-        }
+        setDestinations(res ?? []);
       })
-      .catch(() => setDestinations(MOCK_DESTINATIONS));
+      .catch(() => setDestinations([]));
   }, []);
 
   function handleSearch(e: React.FormEvent) {
@@ -134,10 +124,6 @@ export default function HomePage() {
               <Sparkles size={18} className="text-[#D4A24C] shrink-0" />
               <span>Gợi ý lịch trình thông minh</span>
             </div>
-            <div className="flex items-center gap-2.5 bg-[#123A3A]/80 border border-[#1f5252] p-3 rounded-xl backdrop-blur-md">
-              <ShieldCheck size={18} className="text-[#D4A24C] shrink-0" />
-              <span>Phân Quyền Admin, HDV, Tourist</span>
-            </div>
           </div>
         </div>
       </section>
@@ -169,8 +155,11 @@ export default function HomePage() {
               className="group relative h-44 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 block"
             >
               <img
-                src={dest.imageUrl}
+                src={dest.imageUrl || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80"}
                 alt={dest.name}
+                onError={(e) => {
+                  e.currentTarget.src = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80";
+                }}
                 className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0D2B2B]/90 via-[#0D2B2B]/30 to-transparent" />

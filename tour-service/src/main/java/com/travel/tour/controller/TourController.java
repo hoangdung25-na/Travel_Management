@@ -55,6 +55,13 @@ public class TourController {
         return ApiResponse.ok(tourDetailVm, "Cập nhật Tour thành công");
     }
 
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteTour(@PathVariable UUID id) {
+        log.info("REST request xóa Tour ID: {}", id);
+        tourService.deleteTour(id);
+        return ApiResponse.ok(null, "Xóa Tour thành công");
+    }
+
     @PostMapping("/{id}/schedules")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<TourScheduleVm> addSchedule(@PathVariable UUID id, @Valid @RequestBody CreateScheduleRequest request) {

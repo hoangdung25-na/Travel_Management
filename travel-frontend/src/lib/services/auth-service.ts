@@ -21,6 +21,26 @@ export const authService = {
       apiClient.post<ApiResponse<UserVm>>("/api/v1/auth/register", payload)
     ),
 
+  loginWithGoogle: (payload: { email: string; fullName: string; avatarUrl?: string }): Promise<AuthTokenVm> =>
+    unwrap<AuthTokenVm>(
+      apiClient.post<ApiResponse<AuthTokenVm>>("/api/v1/auth/google", payload)
+    ),
+
+  sendForgotPasswordOtp: (email: string): Promise<string> =>
+    unwrap<string>(
+      apiClient.post<ApiResponse<string>>("/api/v1/auth/forgot-password/send-otp", { email })
+    ),
+
+  verifyForgotPasswordOtp: (email: string, otp: string): Promise<boolean> =>
+    unwrap<boolean>(
+      apiClient.post<ApiResponse<boolean>>("/api/v1/auth/forgot-password/verify-otp", { email, otp })
+    ),
+
+  resetPassword: (payload: { email: string; otp: string; newPassword: string }): Promise<string> =>
+    unwrap<string>(
+      apiClient.post<ApiResponse<string>>("/api/v1/auth/forgot-password/reset", payload)
+    ),
+
   refreshToken: (payload: RefreshTokenRequest): Promise<AuthTokenVm> =>
     unwrap<AuthTokenVm>(
       apiClient.post<ApiResponse<AuthTokenVm>>("/api/v1/auth/refresh-token", payload)

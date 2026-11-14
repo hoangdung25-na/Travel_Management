@@ -19,8 +19,23 @@ export const aiService = {
     );
   },
 
-  chat: (promptText: string): Promise<string> =>
+  chat: (promptText: string, conversationId?: string): Promise<{ conversationId: string; reply: string }> =>
+    unwrap<{ conversationId: string; reply: string }>(
+      apiClient.post<ApiResponse<{ conversationId: string; reply: string }>>("/api/v1/ai/chat", {
+        promptText,
+        conversationId,
+      })
+    ),
+
+  syncFromTourService: (): Promise<{ syncedCount: number; message: string }> =>
+    unwrap<{ syncedCount: number; message: string }>(
+      apiClient.post<ApiResponse<{ syncedCount: number; message: string }>>(
+        "/api/v1/ai/sync-from-tour-service"
+      )
+    ),
+
+  clearConversation: (conversationId: string): Promise<string> =>
     unwrap<string>(
-      apiClient.post<ApiResponse<string>>("/api/v1/ai/chat", { promptText })
+      apiClient.delete<ApiResponse<string>>(`/api/v1/ai/chat/${conversationId}`)
     ),
 };

@@ -12,6 +12,8 @@ public record CreateDestinationRequest(
         String city,
 
         @NotBlank(message = "Quốc gia không được để trống")
-        String country
+        String country,
+
+        String imageUrl
 ) {
 }

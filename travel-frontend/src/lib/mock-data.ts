@@ -108,10 +108,15 @@ export const MOCK_TOURS: TourDetailVm[] = [
     updatedAt: "2026-08-10T15:00:00Z",
     duration: "3 Ngày 2 Đêm",
     imageUrl: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80",
+    images: [
+      { id: "img-01-1", imageUrl: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=1200&q=80", caption: "Cầu Vàng Bà Nà Hills bồng bềnh mây trắng", isPrimary: true, displayOrder: 0 },
+      { id: "img-01-2", imageUrl: "https://images.unsplash.com/photo-1555921015-5532091f6026?auto=format&fit=crop&w=1200&q=80", caption: "Phố cổ Hội An lung linh hoa đăng về đêm", isPrimary: false, displayOrder: 1 },
+      { id: "img-01-3", imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80", caption: "Bãi biển Mỹ Khê Đà Nẵng cát trắng mịn", isPrimary: false, displayOrder: 2 },
+    ],
     galleryUrls: [
       "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1555921015-5532091f6026?auto=format&fit=crop&w=800&q=80",
       "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
     ],
     rating: 4.9,
     reviewCount: 128,
@@ -183,9 +188,15 @@ export const MOCK_TOURS: TourDetailVm[] = [
     updatedAt: "2026-08-12T09:00:00Z",
     duration: "4 Ngày 3 Đêm",
     imageUrl: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",
+    images: [
+      { id: "img-02-1", imageUrl: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80", caption: "Hoàng hôn lãng mạn tại Sunset Sanato Phú Quốc", isPrimary: true, displayOrder: 0 },
+      { id: "img-02-2", imageUrl: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80", caption: "Trải nghiệm lặn ngắm rạn san hô Hòn Mây Rút", isPrimary: false, displayOrder: 1 },
+      { id: "img-02-3", imageUrl: "https://images.unsplash.com/photo-1512100356356-de1b84283e18?auto=format&fit=crop&w=1200&q=80", caption: "Thiên đường vui chơi giải trí VinWonders", isPrimary: false, displayOrder: 2 },
+    ],
     galleryUrls: [
       "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1512100356356-de1b84283e18?auto=format&fit=crop&w=800&q=80",
     ],
     rating: 4.8,
     reviewCount: 96,
@@ -247,6 +258,11 @@ export const MOCK_TOURS: TourDetailVm[] = [
     updatedAt: "2026-08-14T10:00:00Z",
     duration: "3 Ngày 2 Đêm",
     imageUrl: "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80",
+    images: [
+      { id: "img-03-1", imageUrl: "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1200&q=80", caption: "Đèo Mã Pí Lèng - Hùng quan đệ nhất phương Bắc", isPrimary: true, displayOrder: 0 },
+      { id: "img-03-2", imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80", caption: "Hẻm Tu Sản bên dòng sông Nho Quế xanh ngọc", isPrimary: false, displayOrder: 1 },
+      { id: "img-03-3", imageUrl: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1200&q=80", caption: "Cột cờ quốc gia Lũng Cú kiêu hãnh", isPrimary: false, displayOrder: 2 },
+    ],
     rating: 5.0,
     reviewCount: 64,
     includedServices: [

@@ -5,7 +5,9 @@ import com.travel.tour.entity.DestinationEntity;
 import com.travel.tour.entity.ItineraryEntity;
 import com.travel.tour.entity.TourEntity;
 import com.travel.tour.entity.TourScheduleEntity;
+import com.travel.tour.entity.TourImageEntity;
 import com.travel.tour.repository.DestinationRepository;
+import com.travel.tour.repository.TourImageRepository;
 import com.travel.tour.repository.TourRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,11 +27,31 @@ public class TourDataInitializer implements CommandLineRunner {
 
     private final TourRepository tourRepository;
     private final DestinationRepository destinationRepository;
+    private final TourImageRepository tourImageRepository;
 
     @Override
     public void run(String... args) {
+        // Đảm bảo tất cả điểm đến hiện có đều có ảnh minh họa
+        List<DestinationEntity> currentDestinations = destinationRepository.findAll();
+        for (DestinationEntity d : currentDestinations) {
+            if (d.getImageUrl() == null || d.getImageUrl().isBlank()) {
+                d.setImageUrl(resolveDefaultImage(d.getName(), d.getCity()));
+                destinationRepository.save(d);
+            }
+        }
+
+        // Nếu cơ sở dữ liệu đã có Tour nhưng chưa có ảnh trong bảng tour_images, tự động bổ sung ảnh thật cho từng tour
         if (tourRepository.count() > 0) {
-            log.info("Cơ sở dữ liệu Tour đã có {} bản ghi. Bỏ qua khởi tạo dữ liệu mẫu.", tourRepository.count());
+            log.info("Cơ sở dữ liệu Tour đã có {} bản ghi. Kiểm tra và bổ sung thư viện ảnh cho các tour hiện có...", tourRepository.count());
+            List<TourEntity> existingTours = tourRepository.findAll();
+            for (TourEntity t : existingTours) {
+                if (t.getImages() == null || t.getImages().isEmpty()) {
+                    List<TourImageEntity> imgs = generateDefaultImagesForTour(t);
+                    t.setImages(imgs);
+                    tourRepository.save(t);
+                    log.info("Đã bổ sung {} ảnh thật vào bảng tour_images cho tour: {}", imgs.size(), t.getTitle());
+                }
+            }
             return;
         }
 
@@ -40,36 +62,42 @@ public class TourDataInitializer implements CommandLineRunner {
                 .name("Đà Nẵng & Hội An")
                 .city("Đà Nẵng")
                 .country("Việt Nam")
+                .imageUrl("https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80")
                 .build();
 
         DestinationEntity pq = DestinationEntity.builder()
                 .name("Đảo Ngọc Phú Quốc")
                 .city("Phú Quốc")
                 .country("Việt Nam")
+                .imageUrl("https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80")
                 .build();
 
         DestinationEntity hg = DestinationEntity.builder()
                 .name("Hà Giang Loop")
                 .city("Hà Giang")
                 .country("Việt Nam")
+                .imageUrl("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80")
                 .build();
 
         DestinationEntity nt = DestinationEntity.builder()
                 .name("Vịnh Biển Nha Trang")
                 .city("Nha Trang")
                 .country("Việt Nam")
+                .imageUrl("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80")
                 .build();
 
         DestinationEntity hl = DestinationEntity.builder()
                 .name("Vịnh Hạ Long")
                 .city("Quảng Ninh")
                 .country("Việt Nam")
+                .imageUrl("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80")
                 .build();
 
         DestinationEntity sp = DestinationEntity.builder()
                 .name("Sapa Mờ Sương")
                 .city("Lào Cai")
                 .country("Việt Nam")
+                .imageUrl("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80")
                 .build();
 
         destinationRepository.saveAll(List.of(dn, pq, hg, nt, hl, sp));
@@ -258,7 +286,66 @@ public class TourDataInitializer implements CommandLineRunner {
 
         tour6.setSchedules(new ArrayList<>(List.of(sch6_1)));
 
+        // Gán ảnh thật cho 6 tour khởi tạo
+        tour1.setImages(generateDefaultImagesForTour(tour1));
+        tour2.setImages(generateDefaultImagesForTour(tour2));
+        tour3.setImages(generateDefaultImagesForTour(tour3));
+        tour4.setImages(generateDefaultImagesForTour(tour4));
+        tour5.setImages(generateDefaultImagesForTour(tour5));
+        tour6.setImages(generateDefaultImagesForTour(tour6));
+
         tourRepository.saveAll(List.of(tour1, tour2, tour3, tour4, tour5, tour6));
         log.info("Khởi tạo 6 Tour mẫu thành công vào cơ sở dữ liệu!");
+    }
+
+    private List<TourImageEntity> generateDefaultImagesForTour(TourEntity tour) {
+        List<TourImageEntity> list = new ArrayList<>();
+        String text = ((tour.getTitle() != null ? tour.getTitle() : "") + " " +
+                (tour.getCode() != null ? tour.getCode() : "")).toLowerCase();
+
+        if (text.contains("đà nẵng") || text.contains("hội an") || text.contains("dn")) {
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=1200&q=80").caption("Cầu Vàng Bà Nà Hills bồng bềnh giữa mây trời").isPrimary(true).displayOrder(0).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1555921015-5532091f6026?auto=format&fit=crop&w=1200&q=80").caption("Phố cổ Hội An lung linh hoa đăng về đêm").isPrimary(false).displayOrder(1).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80").caption("Bãi biển Mỹ Khê Đà Nẵng cát trắng mịn").isPrimary(false).displayOrder(2).build());
+        } else if (text.contains("phú quốc") || text.contains("pq")) {
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80").caption("Hoàng hôn lãng mạn tại Sunset Sanato Phú Quốc").isPrimary(true).displayOrder(0).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80").caption("Trải nghiệm lặn ngắm rạn san hô Hòn Mây Rút").isPrimary(false).displayOrder(1).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1512100356356-de1b84283e18?auto=format&fit=crop&w=1200&q=80").caption("Thiên đường vui chơi giải trí VinWonders").isPrimary(false).displayOrder(2).build());
+        } else if (text.contains("hà giang") || text.contains("hg")) {
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1200&q=80").caption("Đèo Mã Pí Lèng - Hùng quan đệ nhất phương Bắc").isPrimary(true).displayOrder(0).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80").caption("Hẻm Tu Sản bên dòng sông Nho Quế xanh ngọc").isPrimary(false).displayOrder(1).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1200&q=80").caption("Cột cờ quốc gia Lũng Cú kiêu hãnh").isPrimary(false).displayOrder(2).build());
+        } else if (text.contains("hạ long") || text.contains("quảng ninh") || text.contains("hl")) {
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1200&q=80").caption("Kỳ quan thiên nhiên thế giới Vịnh Hạ Long").isPrimary(true).displayOrder(0).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=1200&q=80").caption("Du thuyền 5 sao lướt sóng ngắm hoàng hôn trên vịnh").isPrimary(false).displayOrder(1).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80").caption("Bãi biển đảo Ti Tốp nhìn từ đỉnh núi").isPrimary(false).displayOrder(2).build());
+        } else if (text.contains("sapa") || text.contains("sa pa") || text.contains("sp")) {
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80").caption("Bản Cát Cát và ruộng bậc thang mùa lúa chín").isPrimary(true).displayOrder(0).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80").caption("Chinh phục Nóc nhà Đông Dương Fansipan 3.143m").isPrimary(false).displayOrder(1).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1200&q=80").caption("Biển mây bồng bềnh tại Cổng Trời Ô Quy Hồ").isPrimary(false).displayOrder(2).build());
+        } else {
+            // Default images if not matching specific region
+            list.add(TourImageEntity.builder().tour(tour).imageUrl(tour.getImageUrl() != null ? tour.getImageUrl() : "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80").caption(tour.getTitle()).isPrimary(true).displayOrder(0).build());
+            list.add(TourImageEntity.builder().tour(tour).imageUrl("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1200&q=80").caption("Phong cảnh thiên nhiên kỳ vĩ").isPrimary(false).displayOrder(1).build());
+        }
+        return list;
+    }
+
+    private String resolveDefaultImage(String name, String city) {
+        String combined = ((name != null ? name : "") + " " + (city != null ? city : "")).toLowerCase();
+        if (combined.contains("đà nẵng") || combined.contains("hội an") || combined.contains("da nang")) {
+            return "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80";
+        } else if (combined.contains("phú quốc") || combined.contains("phu quoc")) {
+            return "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80";
+        } else if (combined.contains("hà giang") || combined.contains("ha giang")) {
+            return "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80";
+        } else if (combined.contains("nha trang")) {
+            return "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80";
+        } else if (combined.contains("hạ long") || combined.contains("ha long")) {
+            return "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80";
+        } else if (combined.contains("sapa") || combined.contains("sa pa")) {
+            return "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
+        }
+        return "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80";
     }
 }

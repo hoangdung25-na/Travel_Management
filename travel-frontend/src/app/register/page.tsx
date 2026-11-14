@@ -8,6 +8,7 @@ import { useToast } from "@/lib/toast-context";
 import { ApiError } from "@/lib/api-client";
 import { AccountType } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
+import { CheckCircle2 } from "lucide-react";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -17,6 +18,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     email: "",
     password: "",
+    confirmPassword: "",
     fullName: "",
     phoneNumber: "",
     accountType: "TOURIST" as AccountType,
@@ -25,13 +27,27 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
     if (form.password.length < 8) {
       notify("error", "Mật khẩu phải có ít nhất 8 ký tự.");
       return;
     }
+
+    if (form.password !== form.confirmPassword) {
+      notify("error", "Mật khẩu xác nhận không trùng khớp. Vui lòng nhập lại!");
+      return;
+    }
+
     setLoading(true);
     try {
-      await register(form);
+      await register({
+        email: form.email,
+        password: form.password,
+        fullName: form.fullName,
+        phoneNumber: form.phoneNumber,
+        accountType: form.accountType,
+      });
+
       notify(
         "success",
         form.accountType === "GUIDE"
@@ -49,41 +65,79 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-20">
-      <p className="text-xs uppercase tracking-[0.2em] text-[#E2603F] mb-2 text-center font-bold">Bắt đầu hành trình</p>
-      <h1 className="font-display text-3xl text-center mb-8 font-extrabold text-stone-900">Tạo tài khoản</h1>
+      <p className="text-xs uppercase tracking-[0.2em] text-[#E2603F] mb-2 text-center font-bold">
+        Bắt đầu hành trình
+      </p>
+      <h1 className="font-display text-3xl text-center mb-8 font-extrabold text-stone-900">
+        Tạo tài khoản
+      </h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          required
-          value={form.fullName}
-          onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-          placeholder="Họ và tên"
-          className="w-full rounded-lg border border-[#e7e0d3] px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-[#E2603F]"
-        />
-        <input
-          required
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          placeholder="Email"
-          className="w-full rounded-lg border border-[#e7e0d3] px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-[#E2603F]"
-        />
-        <input
-          value={form.phoneNumber}
-          onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
-          placeholder="Số điện thoại (10 số)"
-          className="w-full rounded-lg border border-[#e7e0d3] px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-[#E2603F]"
-        />
-        <input
-          required
-          type="password"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          placeholder="Mật khẩu (tối thiểu 8 ký tự)"
-          className="w-full rounded-lg border border-[#e7e0d3] px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-[#E2603F]"
-        />
+        <div>
+          <input
+            required
+            value={form.fullName}
+            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+            placeholder="Họ và tên"
+            className="w-full rounded-lg border border-[#e7e0d3] px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-[#E2603F]"
+          />
+        </div>
 
-        <div className="flex gap-2">
+        <div>
+          <input
+            required
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            placeholder="Email"
+            className="w-full rounded-lg border border-[#e7e0d3] px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-[#E2603F]"
+          />
+        </div>
+
+        <div>
+          <input
+            value={form.phoneNumber}
+            onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
+            placeholder="Số điện thoại (10 số)"
+            className="w-full rounded-lg border border-[#e7e0d3] px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-[#E2603F]"
+          />
+        </div>
+
+        <div>
+          <input
+            required
+            type="password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            placeholder="Mật khẩu (tối thiểu 8 ký tự)"
+            className="w-full rounded-lg border border-[#e7e0d3] px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-[#E2603F]"
+          />
+        </div>
+
+        <div>
+          <input
+            required
+            type="password"
+            value={form.confirmPassword}
+            onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+            placeholder="Nhập lại mật khẩu"
+            className={`w-full rounded-lg border px-4 py-2.5 text-sm bg-white focus:outline-none ${
+              form.confirmPassword && form.confirmPassword !== form.password
+                ? "border-red-400 focus:border-red-500"
+                : "border-[#e7e0d3] focus:border-[#E2603F]"
+            }`}
+          />
+          {form.confirmPassword && form.confirmPassword !== form.password && (
+            <p className="text-[11px] text-red-500 mt-1">Mật khẩu nhập lại chưa trùng khớp.</p>
+          )}
+          {form.confirmPassword && form.confirmPassword === form.password && (
+            <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1 font-medium">
+              <CheckCircle2 size={13} /> Mật khẩu trùng khớp!
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-2 pt-1">
           {(["TOURIST", "GUIDE"] as AccountType[]).map((type) => (
             <button
               key={type}

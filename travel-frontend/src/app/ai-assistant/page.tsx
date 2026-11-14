@@ -1,348 +1,351 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 import {
   Sparkles,
   Send,
-  MapPin,
-  Wallet,
   Bot,
   User,
-  MessageSquare,
-  Compass,
-  ArrowRight,
+  RotateCcw,
   RefreshCw,
+  Compass,
+  FileQuestion,
+  CreditCard,
+  Mountain,
+  Waves,
+  ShieldAlert,
 } from "lucide-react";
 import { aiService } from "@/lib/services/ai-service";
-import { TripRecommendationVm, ChatMessage } from "@/lib/types";
-import { formatCurrency } from "@/lib/format";
+import { ChatMessage } from "@/lib/types";
 import { useToast } from "@/lib/toast-context";
+import { MarkdownMessage } from "@/components/ai/MarkdownMessage";
 
-const SUGGESTIONS = [
-  "3 ngày 2 đêm ở Đà Nẵng, ngân sách 5 triệu cho 2 người",
-  "Tour thiên đường Phú Quốc lặn ngắm san hô 4 ngày 3 đêm",
-  "Phượt đèo Mã Pí Lèng Hà Giang 3 ngày 2 đêm cùng bạn bè",
+// Danh sách chip gợi ý câu hỏi thông minh
+const QUICK_PROMPTS = [
+  {
+    icon: Waves,
+    label: "Tour biển Đà Nẵng 3N2Đ",
+    query: "Tìm cho tôi tour khám phá Đà Nẵng - Hội An 3 ngày 2 đêm với ngân sách khoảng 5 triệu",
+  },
+  {
+    icon: Mountain,
+    label: "Tour Sa Pa săn mây Fansipan",
+    query: "Gợi ý tour Sa Pa 3 ngày 2 đêm cho gia đình có trẻ em, muốn đi cáp treo Fansipan",
+  },
+  {
+    icon: FileQuestion,
+    label: "Chính sách hủy tour & hoàn tiền",
+    query: "Quy định hủy tour trước ngày khởi hành và thời gian nhận lại tiền cọc thế nào?",
+  },
+  {
+    icon: CreditCard,
+    label: "Phương thức cọc & thanh toán",
+    query: "Tôi có thể thanh toán tiền tour qua những hình thức nào? Có cần cọc trước không?",
+  },
+  {
+    icon: ShieldAlert,
+    label: "Giấy tờ tùy thân cần chuẩn bị",
+    query: "Khi đi tour trong nước và quốc tế thì người lớn và trẻ em cần mang giấy tờ gì?",
+  },
 ];
+
+function formatTime(date: Date = new Date()): string {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
 
 export default function AiAssistantPage() {
   const { notify } = useToast();
-  const [activeTab, setActiveTab] = useState<"PLANNER" | "CHAT">("PLANNER");
 
-  // RAG Planner State
-  const [query, setQuery] = useState("");
-  const [maxBudget, setMaxBudget] = useState("");
-  const [destination, setDestination] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<TripRecommendationVm | null>(null);
-
-  // Chatbot State
+  // Multi-turn Conversation State
+  const [conversationId, setConversationId] = useState<string>("");
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  // Danh sách tin nhắn trong khung chat
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: "msg-1",
+      id: "msg-welcome",
       sender: "ai",
-      text: "Xin chào! Tôi là AI Travel Assistant. Bạn cần tư vấn về chính sách hủy tour, thủ tục thanh toán, chọn trang phục hay thời tiết các điểm đến?",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      text: "Xin chào quý khách! 👋 Em là **Trợ lý AI Du lịch 24/7** của Travel Platform.\n\nEm có thể hỗ trợ quý khách:\n• **Tư vấn lịch trình & gợi ý tour du lịch** theo điểm đến và ngân sách cá nhân\n• **Cung cấp đường link xem chi tiết & đặt tour ngay**\n• **Giải đáp chính sách hoàn hủy vé, đặt cọc 30-50% & các cổng thanh toán**\n• **Quy định giấy tờ tùy thân, thủ tục CCCD/Visa và số Hotline hỗ trợ 24/7**.\n\nQuý khách đang quan tâm đến chuyến đi nào hoặc cần hỗ trợ thông tin gì cứ nhắn em nhé!",
+      timestamp: "",
     },
   ]);
 
-  async function handleAskRAG(e?: React.FormEvent, presetQuery?: string) {
-    e?.preventDefault();
-    const text = presetQuery ?? query;
-    if (!text.trim()) return;
-    setQuery(text);
-    setLoading(true);
-    setResult(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    try {
-      const res = await aiService.getRecommendations({
-        promptText: text,
-        maxBudget: maxBudget ? Number(maxBudget) : undefined,
-        destination: destination || undefined,
-        topK: 5,
-      });
-      setResult(res);
-    } catch (err: any) {
-      notify("error", err.message || "Trợ lý AI chưa phản hồi được, vui lòng thử lại.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Khởi tạo timestamp cho tin nhắn chào mừng ban đầu trên client để tránh lệch SSR Hydration
+  useEffect(() => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === "msg-welcome" && !m.timestamp ? { ...m, timestamp: formatTime() } : m
+      )
+    );
+  }, []);
 
-  async function handleSendChat(e: React.FormEvent) {
-    e.preventDefault();
-    if (!chatInput.trim() || chatLoading) return;
+  // Tự động cuộn xuống tin nhắn mới nhất
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, chatLoading]);
+
+  // Xử lý gửi tin nhắn (Multi-turn Context RAG)
+  async function handleSendMessage(textToSend?: string) {
+    const text = (textToSend ?? chatInput).trim();
+    if (!text || chatLoading) return;
 
     const userMsg: ChatMessage = {
-      id: `chat-${Date.now()}`,
+      id: `chat-user-${Date.now()}`,
       sender: "user",
-      text: chatInput,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      text: text,
+      timestamp: formatTime(),
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    const currentInput = chatInput;
     setChatInput("");
     setChatLoading(true);
 
     try {
-      const reply = await aiService.chat(currentInput);
+      // Gửi câu hỏi kèm conversationId để AI nhớ ngữ cảnh đa lượt
+      const response = await aiService.chat(text, conversationId || undefined);
+
+      if (response && response.conversationId) {
+        setConversationId(response.conversationId);
+      }
+
+      const replyText = typeof response === "string" ? response : response.reply;
+
       const aiMsg: ChatMessage = {
         id: `chat-ai-${Date.now()}`,
         sender: "ai",
-        text: reply,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        text: replyText,
+        timestamp: formatTime(),
       };
+
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err: any) {
-      notify("error", "Lỗi kết nối AI Chatbot");
+      notify("error", err?.message || "Lỗi kết nối với Trợ lý AI, vui lòng thử lại.");
+      const errorMsg: ChatMessage = {
+        id: `chat-err-${Date.now()}`,
+        sender: "ai",
+        text: "Dạ xin lỗi quý khách, hiện tại kết nối đến hệ thống AI đang bị gián đoạn đôi chút. Quý khách vui lòng thử lại sau vài giây hoặc liên hệ Hotline **1900 6868** để được hỗ trợ tức thì nhé!",
+        timestamp: formatTime(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setChatLoading(false);
     }
   }
 
-  return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 space-y-8">
-      {/* Top Banner Header */}
-      <div className="rounded-3xl bg-[#0D2B2B] text-white p-8 sm:p-10 relative overflow-hidden shadow-xl border border-[#123A3A]">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-[#E2603F]/10 rounded-full blur-3xl" />
-        <div className="relative max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4A24C]/20 border border-[#D4A24C]/30 text-[#D4A24C] text-xs font-semibold">
-            <Sparkles size={14} className="text-[#D4A24C] animate-pulse" />
-            <span>Trợ Lý AI Lập Kế Hoạch Du Lịch</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            Trợ Lý AI Du Lịch Thông Minh 24/7
-          </h1>
-          <p className="text-stone-300 text-sm">
-            Tự động gợi ý tour phù hợp với ngân sách cá nhân bằng công nghệ tìm kiếm thông minh và giải đáp thắc mắc 24/7.
-          </p>
-        </div>
+  // Bắt đầu phiên trò chuyện mới (Reset Session)
+  async function handleResetConversation() {
+    if (conversationId) {
+      try {
+        await aiService.clearConversation(conversationId);
+      } catch (ignored) {}
+    }
 
-        {/* Tab Switcher */}
-        <div className="pt-6 flex gap-3">
-          <button
-            onClick={() => setActiveTab("PLANNER")}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
-              activeTab === "PLANNER"
-                ? "bg-[#E2603F] text-white shadow-lg shadow-[#E2603F]/30"
-                : "bg-[#123A3A] text-stone-300 hover:text-white"
-            }`}
-          >
-            <Compass size={16} /> Gợi ý lịch trình thông minh
-          </button>
-          <button
-            onClick={() => setActiveTab("CHAT")}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
-              activeTab === "CHAT"
-                ? "bg-[#E2603F] text-white shadow-lg shadow-[#E2603F]/30"
-                : "bg-[#123A3A] text-stone-300 hover:text-white"
-            }`}
-          >
-            <MessageSquare size={16} /> Chatbot Tư Vấn 24/7
-          </button>
+    setConversationId("");
+    setMessages([
+      {
+        id: `msg-welcome-${Date.now()}`,
+        sender: "ai",
+        text: "Đã bắt đầu phiên trò chuyện mới! 🚀 Quý khách cần em tư vấn tour du lịch hay giải đáp chính sách nào ạ?",
+        timestamp: formatTime(),
+      },
+    ]);
+    notify("success", "Đã làm mới cuộc hội thoại!");
+  }
+
+  // Đồng bộ Tour thật từ tour-service sang AI Vector DB
+  async function handleSyncTours() {
+    setSyncing(true);
+    try {
+      const res = await aiService.syncFromTourService();
+      notify("success", res.message || "Đã đồng bộ thành công toàn bộ Tour thật từ hệ thống sang AI Vector DB!");
+    } catch (err: any) {
+      notify("error", err?.message || "Lỗi kết nối khi đồng bộ Tour từ hệ thống.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      {/* Top Banner Header */}
+      <div className="rounded-3xl bg-[#0D2B2B] text-white p-6 sm:p-8 relative overflow-hidden shadow-xl border border-[#123A3A]">
+        <div className="absolute right-0 top-0 w-80 h-80 bg-[#E2603F]/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4A24C]/20 border border-[#D4A24C]/30 text-[#D4A24C] text-xs font-semibold">
+              <Sparkles size={14} className="text-[#D4A24C] animate-pulse" />
+              <span>Trợ Lý RAG AI Đa Năng 24/7</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Tư Vấn Lịch Trình & Chăm Sóc Khách Hàng Thông Minh
+            </h1>
+            <p className="text-stone-300 text-xs sm:text-sm">
+              Hệ thống kết nối trực tiếp với CSDL Tour & Chính sách thực tế. Tự động gợi ý tour phù hợp ngân sách, đính kèm link đặt tour và ghi nhớ ngữ cảnh hội thoại.
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={handleResetConversation}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-[#123A3A] hover:bg-[#1b4b4b] text-stone-200 hover:text-white transition-all border border-stone-700/50 shadow-sm"
+              title="Xóa ngữ cảnh và bắt đầu phiên chat mới"
+            >
+              <RotateCcw size={14} />
+              <span>Làm mới chat</span>
+            </button>
+
+            <button
+              onClick={handleSyncTours}
+              disabled={syncing}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-[#D4A24C]/20 text-[#D4A24C] border border-[#D4A24C]/40 hover:bg-[#D4A24C]/30 transition-all disabled:opacity-50 shadow-sm"
+              title="Đồng bộ dữ liệu tour thật từ Tour Service vào AI Vector DB"
+            >
+              <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+              <span>{syncing ? "Đang nạp..." : "Đồng bộ Tour"}</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Tab 1: Smart Itinerary Planner */}
-      {activeTab === "PLANNER" && (
-        <div className="space-y-8">
-          <form onSubmit={handleAskRAG} className="bg-white p-6 rounded-3xl border border-[#e7e0d3] shadow-sm space-y-4">
-            <label className="text-xs font-bold text-stone-700 block">Nhu cầu du lịch của bạn:</label>
-            <textarea
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              rows={3}
-              placeholder="Ví dụ: Tôi muốn đi du lịch 3 ngày 2 đêm ở Đà Nẵng cho gia đình có trẻ nhỏ, ngân sách 10 triệu..."
-              className="w-full text-sm p-4 bg-[#FBF8F2] border border-[#e7e0d3] rounded-2xl focus:outline-none focus:border-[#E2603F] resize-none"
-            />
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex items-center gap-2 flex-1 rounded-xl border border-[#e7e0d3] bg-[#FBF8F2] px-3 py-2 text-xs">
-                <MapPin size={16} className="text-[#E2603F] shrink-0" />
-                <input
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  placeholder="Điểm đến ưu tiên (ví dụ: Đà Nẵng)"
-                  className="w-full bg-transparent focus:outline-none"
-                />
-              </div>
-              <div className="flex items-center gap-2 flex-1 rounded-xl border border-[#e7e0d3] bg-[#FBF8F2] px-3 py-2 text-xs">
-                <Wallet size={16} className="text-[#D4A24C] shrink-0" />
-                <input
-                  value={maxBudget}
-                  onChange={(e) => setMaxBudget(e.target.value)}
-                  type="number"
-                  placeholder="Ngân sách tối đa (VNĐ)"
-                  className="w-full bg-transparent focus:outline-none"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading || !query.trim()}
-                className="bg-[#E2603F] hover:bg-[#d55333] text-white font-bold text-xs px-6 py-3 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {loading ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
-                <span>Gửi Cho AI</span>
-              </button>
-            </div>
-          </form>
-
-          {/* Prompt Presets */}
-          {!result && !loading && (
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-stone-500 block">Gợi ý mẫu:</span>
-              <div className="flex flex-wrap gap-2">
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => handleAskRAG(undefined, s)}
-                    className="text-xs rounded-xl border border-[#e7e0d3] bg-white px-3.5 py-2 text-stone-700 hover:border-[#E2603F] hover:text-[#E2603F] transition-all shadow-sm"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Loading Skeleton */}
-          {loading && (
-            <div className="p-8 bg-white rounded-3xl border border-[#e7e0d3] space-y-4 animate-pulse">
-              <div className="h-5 w-1/3 bg-stone-200 rounded" />
-              <div className="h-20 bg-stone-200 rounded-2xl" />
-              <div className="h-32 bg-stone-200 rounded-2xl" />
-            </div>
-          )}
-
-          {/* AI Recommendation Output */}
-          {result && (
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#e7e0d3] shadow-sm space-y-8">
-              {/* Introduction */}
-              <div className="p-4 bg-[#FBF8F2] border border-[#e7e0d3] rounded-2xl text-stone-800 text-sm leading-relaxed">
-                <p className="font-semibold text-stone-900 mb-1 flex items-center gap-1.5">
-                  <Sparkles size={16} className="text-[#D4A24C]" /> Lời Tư Vấn Từ AI Assistant:
-                </p>
-                {result.introduction}
-              </div>
-
-              {/* Recommended Tours */}
-              {(result.recommendedTours ?? (result as any).recommended_tours ?? []).length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="font-bold text-stone-900 text-lg flex items-center gap-2">
-                    <Compass size={20} className="text-[#E2603F]" /> Tour Được Đề Xuất
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {(result.recommendedTours ?? (result as any).recommended_tours ?? []).map((t: any) => (
-                      <Link
-                        key={t.tourId || t.tour_id}
-                        href={t.bookingUrl || t.booking_url || `/tours/${t.tourId || t.tour_id}`}
-                        className="group block bg-[#FBF8F2] p-5 rounded-2xl border border-[#e7e0d3] hover:border-[#E2603F]/50 hover:bg-white transition-all shadow-sm"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-mono text-[10px] font-bold bg-[#0D2B2B] text-[#D4A24C] px-2 py-0.5 rounded border border-[#D4A24C]/30">
-                            {t.code || "TOUR"}
-                          </span>
-                          <span className="font-bold text-[#E2603F] text-sm">
-                            {formatCurrency(t.pricePerAdult || t.price || 4500000)}
-                          </span>
-                        </div>
-                        <h4 className="font-bold text-stone-900 text-sm group-hover:text-[#E2603F] transition-colors leading-snug mb-1">
-                          {t.title}
-                        </h4>
-                        <p className="text-xs text-stone-500 leading-relaxed">{t.reason}</p>
-                        <div className="mt-3 flex items-center gap-1 text-xs font-bold text-[#E2603F]">
-                          <span>Xem chi tiết tour</span>
-                          <ArrowRight size={14} />
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Detailed Itinerary */}
-              {(result.detailedItinerary ?? (result as any).detailed_itinerary ?? []).length > 0 && (
-                <div className="space-y-4 pt-4 border-t border-[#f5f0e6]">
-                  <h3 className="font-bold text-stone-900 text-lg">Gợi Ý Lịch Trình Chi Tiết</h3>
-                  <div className="space-y-3">
-                    {(result.detailedItinerary ?? (result as any).detailed_itinerary ?? []).map((d: any) => (
-                      <div key={d.day} className="flex items-start gap-3 p-4 bg-[#FBF8F2] rounded-2xl border border-[#e7e0d3]">
-                        <span className="w-7 h-7 rounded-xl bg-[#0D2B2B] text-[#D4A24C] text-xs font-bold flex items-center justify-center shrink-0 border border-[#D4A24C]/30">
-                          N{d.day}
-                        </span>
-                        <div className="space-y-1">
-                          <p className="font-bold text-stone-900 text-sm">{d.title || `Ngày ${d.day}`}</p>
-                          <p className="text-xs text-stone-600 leading-relaxed">{d.description || d.activity}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab 2: 24/7 Chatbot */}
-      {activeTab === "CHAT" && (
-        <div className="bg-white rounded-3xl border border-[#e7e0d3] shadow-sm overflow-hidden flex flex-col h-[550px]">
-          {/* Chat Messages Log */}
-          <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-[#FBF8F2]">
-            {messages.map((m) => (
+      {/* Main Unified Chat Container */}
+      <div className="bg-white rounded-3xl border border-[#e7e0d3] shadow-md overflow-hidden flex flex-col h-[650px] sm:h-[700px]">
+        {/* Chat Messages Area */}
+        <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-5 bg-[#FBF8F2]/60">
+          {messages.map((m) => (
+            <div
+              key={m.id}
+              className={`flex items-start gap-3 ${
+                m.sender === "user" ? "flex-row-reverse" : "flex-row"
+              }`}
+            >
+              {/* Avatar */}
               <div
-                key={m.id}
-                className={`flex items-start gap-3 ${m.sender === "user" ? "flex-row-reverse" : "flex-row"}`}
+                className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
+                  m.sender === "user"
+                    ? "bg-[#E2603F] text-white"
+                    : "bg-[#0D2B2B] text-[#D4A24C] border border-[#1b4b4b]"
+                }`}
               >
-                <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 ${
-                    m.sender === "user" ? "bg-[#E2603F]" : "bg-[#0D2B2B]"
-                  }`}
-                >
-                  {m.sender === "user" ? <User size={16} /> : <Bot size={16} className="text-[#D4A24C]" />}
-                </div>
-                <div
-                  className={`max-w-md p-4 rounded-2xl text-xs sm:text-sm leading-relaxed ${
-                    m.sender === "user"
-                      ? "bg-[#E2603F] text-white rounded-tr-none shadow-md"
-                      : "bg-white text-stone-800 border border-[#e7e0d3] rounded-tl-none shadow-sm"
-                  }`}
-                >
+                {m.sender === "user" ? (
+                  <User size={18} />
+                ) : (
+                  <Bot size={18} className="animate-pulse" />
+                )}
+              </div>
+
+              {/* Message Bubble */}
+              <div
+                className={`max-w-[85%] sm:max-w-2xl p-4 sm:p-5 rounded-3xl text-sm leading-relaxed ${
+                  m.sender === "user"
+                    ? "bg-[#E2603F] text-white rounded-tr-none shadow-md font-medium"
+                    : "bg-white text-stone-800 border border-[#e7e0d3] rounded-tl-none shadow-sm"
+                }`}
+              >
+                {m.sender === "user" ? (
                   <p className="whitespace-pre-line">{m.text}</p>
-                  <span className={`text-[10px] block mt-1 ${m.sender === "user" ? "text-amber-100 text-right" : "text-stone-400"}`}>
+                ) : (
+                  <MarkdownMessage content={m.text} />
+                )}
+
+                {m.timestamp && (
+                  <span
+                    suppressHydrationWarning
+                    className={`text-[10px] block mt-2 ${
+                      m.sender === "user"
+                        ? "text-amber-100/80 text-right"
+                        : "text-stone-400"
+                    }`}
+                  >
                     {m.timestamp}
                   </span>
-                </div>
+                )}
               </div>
-            ))}
-            {chatLoading && (
-              <div className="flex items-center gap-2 text-xs text-stone-400 italic">
-                <Bot size={16} className="animate-spin text-[#E2603F]" />
-                <span>AI Bot đang soạn câu trả lời...</span>
-              </div>
-            )}
-          </div>
+            </div>
+          ))}
 
-          {/* Chat Input Form */}
-          <form onSubmit={handleSendChat} className="p-4 bg-white border-t border-[#e7e0d3] flex gap-3">
-            <input
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Nhập câu hỏi (ví dụ: Quy định hủy vé, hoàn tiền ra sao?)..."
-              className="flex-1 bg-[#FBF8F2] border border-[#e7e0d3] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#E2603F]"
-            />
-            <button
-              type="submit"
-              disabled={chatLoading || !chatInput.trim()}
-              className="bg-[#E2603F] hover:bg-[#d55333] text-white font-bold px-5 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
-            >
-              <Send size={16} />
-            </button>
-          </form>
+          {/* Typing Loading Indicator */}
+          {chatLoading && (
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 bg-[#0D2B2B] text-[#D4A24C] border border-[#1b4b4b] shadow-sm">
+                <Bot size={18} className="animate-spin text-[#E2603F]" />
+              </div>
+              <div className="bg-white p-4 rounded-3xl rounded-tl-none border border-[#e7e0d3] shadow-sm flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#E2603F] animate-bounce" />
+                <span
+                  className="w-2 h-2 rounded-full bg-[#E2603F] animate-bounce"
+                  style={{ animationDelay: "0.2s" }}
+                />
+                <span
+                  className="w-2 h-2 rounded-full bg-[#E2603F] animate-bounce"
+                  style={{ animationDelay: "0.4s" }}
+                />
+                <span className="text-xs text-stone-500 font-medium ml-2">
+                  AI đang tra cứu dữ liệu CSDL & soạn câu trả lời...
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
         </div>
-      )}
+
+        {/* Quick Suggestion Chips */}
+        <div className="px-4 py-2.5 bg-white border-t border-[#e7e0d3]/70 overflow-x-auto flex items-center gap-2 scrollbar-none">
+          <div className="text-[11px] font-bold text-stone-500 flex items-center gap-1 shrink-0 pl-1">
+            <Compass size={13} className="text-[#E2603F]" />
+            <span>Gợi ý hỏi nhanh:</span>
+          </div>
+          {QUICK_PROMPTS.map((chip, idx) => {
+            const Icon = chip.icon;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSendMessage(chip.query)}
+                disabled={chatLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#FBF8F2] hover:bg-[#F2ECE1] text-stone-700 border border-[#e7e0d3] transition-all hover:scale-[1.02] shrink-0 disabled:opacity-50"
+              >
+                <Icon size={12} className="text-[#E2603F]" />
+                <span>{chip.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Input Bar Form */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendMessage();
+          }}
+          className="p-3 sm:p-4 bg-white border-t border-[#e7e0d3] flex items-center gap-3"
+        >
+          <input
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Hỏi AI bất kỳ điều gì (Ví dụ: Gợi ý tour Sa Pa 3N2Đ, quy định hoàn tiền khi hủy vé)..."
+            className="flex-1 bg-[#FBF8F2] border border-[#e7e0d3] rounded-2xl px-4 py-3 sm:py-3.5 text-sm focus:outline-none focus:border-[#E2603F] focus:ring-2 focus:ring-[#E2603F]/20 transition-all text-stone-800 placeholder:text-stone-400"
+          />
+
+          <button
+            type="submit"
+            disabled={chatLoading || !chatInput.trim()}
+            className="bg-[#E2603F] hover:bg-[#d55333] active:scale-95 text-white font-bold p-3 sm:px-6 sm:py-3.5 rounded-2xl shadow-md shadow-[#E2603F]/20 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          >
+            <Send size={16} />
+            <span className="hidden sm:inline text-xs uppercase tracking-wider">
+              Gửi
+            </span>
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

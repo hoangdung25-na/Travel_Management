@@ -17,7 +17,6 @@ import {
   ROLES_COOKIE,
 } from "./api-client";
 import { LoginRequest, RegisterRequest, UserProfileVm, UserRole } from "./types";
-import { MOCK_USERS } from "./mock-data";
 
 interface AuthContextValue {
   user: UserProfileVm | null;
@@ -25,7 +24,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (payload: LoginRequest) => Promise<UserProfileVm>;
-  loginWithGoogle: (email?: string, fullName?: string) => Promise<UserProfileVm>;
+  loginWithGoogle: (email: string, fullName: string, avatarUrl?: string) => Promise<UserProfileVm>;
   register: (payload: RegisterRequest) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -51,8 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const profile = await authService.getProfile();
-      if (activeRole) {
-        profile.roles = activeRole.split(",") as UserRole[];
+      if (activeRole && profile.roles.includes(activeRole as UserRole)) {
+        profile.roles = [activeRole as UserRole, ...profile.roles.filter(r => r !== activeRole)];
       }
       setUser(profile);
       localStorage.setItem("tm_user_profile", JSON.stringify(profile));
@@ -62,17 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const parsed = JSON.parse(savedUserStr);
           setUser(parsed);
-          setIsLoading(false);
-          return;
-        } catch {}
+        } catch {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
       }
-
-      const defaultUser = MOCK_USERS[0];
-      setUser({
-        ...defaultUser,
-        dateOfBirth: "1995-05-15",
-        emergencyContact: "0909999888",
-      });
     } finally {
       setIsLoading(false);
     }
@@ -82,12 +76,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
-  const login = useCallback(async (payload: LoginRequest) => {
+  const login = useCallback(async (payload: LoginRequest): Promise<UserProfileVm> => {
+    // 1. Gọi trực tiếp API Backend thật
     const tokens = await authService.login(payload);
     Cookies.set(ACCESS_TOKEN_COOKIE, tokens.accessToken, { expires: 7 });
     Cookies.set(REFRESH_TOKEN_COOKIE, tokens.refreshToken, { expires: 7 });
 
-    try {
+    // 2. Lấy hồ sơ người dùng thực tế từ PostgreSQL
+    const profile = await authService.getProfile();
+    setUser(profile);
+    localStorage.setItem("tm_user_profile", JSON.stringify(profile));
+    if (profile.roles && profile.roles.length > 0) {
+      Cookies.set(ROLES_COOKIE, profile.roles.join(","), { expires: 7 });
+    }
+    return profile;
+  }, []);
+
+  const loginWithGoogle = useCallback(
+    async (
+      email: string,
+      fullName: string,
+      avatarUrl?: string
+    ): Promise<UserProfileVm> => {
+      // 1. Gửi thông tin Google về Backend auth-service để lưu hoặc cập nhật vào database PostgreSQL thật
+      const tokens = await authService.loginWithGoogle({ email, fullName, avatarUrl });
+      Cookies.set(ACCESS_TOKEN_COOKIE, tokens.accessToken, { expires: 7 });
+      Cookies.set(REFRESH_TOKEN_COOKIE, tokens.refreshToken, { expires: 7 });
+
+      // 2. Lấy thông tin user thật từ database
       const profile = await authService.getProfile();
       setUser(profile);
       localStorage.setItem("tm_user_profile", JSON.stringify(profile));
@@ -95,73 +111,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         Cookies.set(ROLES_COOKIE, profile.roles.join(","), { expires: 7 });
       }
       return profile;
-    } catch {
-      const roles: UserRole[] = payload.username.includes("admin")
-        ? ["ROLE_ADMIN"]
-        : payload.username.includes("guide")
-        ? ["ROLE_GUIDE"]
-        : ["ROLE_TOURIST"];
-
-      const mockMatch = MOCK_USERS.find((u) => u.roles.includes(roles[0])) ?? MOCK_USERS[0];
-      const profile: UserProfileVm = {
-        ...mockMatch,
-        email: payload.username,
-        roles,
-      };
-
-      setUser(profile);
-      localStorage.setItem("tm_user_profile", JSON.stringify(profile));
-      Cookies.set(ROLES_COOKIE, roles.join(","), { expires: 7 });
-      return profile;
-    }
-  }, []);
-
-  const loginWithGoogle = useCallback(
-    async (email: string = "dunghoang@gmail.com", fullName: string = "Hoàng Dũng") => {
-      const roles: UserRole[] = ["ROLE_TOURIST"];
-      const profile: UserProfileVm = {
-        userId: "11111111-1111-1111-1111-111111111111",
-        email,
-        fullName,
-        status: "ACTIVE",
-        roles,
-        phoneNumber: "0901234567",
-        createdAt: new Date().toISOString(),
-        dateOfBirth: "1995-05-15",
-        emergencyContact: "0909999888",
-      };
-
-      setUser(profile);
-      localStorage.setItem("tm_user_profile", JSON.stringify(profile));
-      Cookies.set(ACCESS_TOKEN_COOKIE, `google-access-token-${Date.now()}`, { expires: 7 });
-      Cookies.set(REFRESH_TOKEN_COOKIE, `google-refresh-token-${Date.now()}`, { expires: 7 });
-      Cookies.set(ROLES_COOKIE, roles.join(","), { expires: 7 });
-      return profile;
     },
     []
   );
 
   const register = useCallback(async (payload: RegisterRequest) => {
+    // Đăng ký trực tiếp với PostgreSQL qua auth-service
     await authService.register(payload);
   }, []);
 
   const switchRole = useCallback(
     (newRole: UserRole) => {
-      const targetUser = MOCK_USERS.find((u) => u.roles.includes(newRole)) ?? MOCK_USERS[0];
-      const updated: UserProfileVm = {
-        ...targetUser,
-        roles: [newRole],
+      if (!user) return;
+      const updatedRoles = [newRole, ...user.roles.filter((r) => r !== newRole)];
+      const updatedUser: UserProfileVm = {
+        ...user,
+        roles: updatedRoles,
       };
-      setUser(updated);
-      localStorage.setItem("tm_user_profile", JSON.stringify(updated));
+      setUser(updatedUser);
+      localStorage.setItem("tm_user_profile", JSON.stringify(updatedUser));
       Cookies.set(ROLES_COOKIE, newRole, { expires: 7 });
-      Cookies.set(ACCESS_TOKEN_COOKIE, `mock-token-${newRole}`, { expires: 7 });
 
       if (newRole === "ROLE_ADMIN") router.push("/admin");
       else if (newRole === "ROLE_GUIDE") router.push("/guide");
       else router.push("/");
     },
-    [router]
+    [user, router]
   );
 
   const logout = useCallback(() => {

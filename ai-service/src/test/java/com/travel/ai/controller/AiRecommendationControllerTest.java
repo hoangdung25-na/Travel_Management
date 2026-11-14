@@ -34,6 +34,15 @@ class AiRecommendationControllerTest {
     @MockBean
     private AiRecommendationService aiRecommendationService;
 
+    @MockBean
+    private com.travel.ai.config.AiDataInitializer aiDataInitializer;
+
+    @MockBean
+    private com.travel.ai.service.TourSyncService tourSyncService;
+
+    @MockBean
+    private com.travel.ai.service.ConversationMemoryService conversationMemoryService;
+
     @Test
     @DisplayName("REST API /api/v1/ai/recommendations trả về HTTP 200 OK và ApiResponse chuẩn")
     void getRecommendations_ApiSuccess() throws Exception {

@@ -50,6 +50,13 @@ public class BookingController {
         return ApiResponse.ok(page, "Lấy danh sách đơn đặt tour thành công");
     }
 
+    @GetMapping("/admin/all")
+    public ApiResponse<java.util.List<BookingDetailVm>> getAllBookings() {
+        log.info("REST request lấy toàn bộ đơn đặt tour cho Admin");
+        java.util.List<BookingDetailVm> bookings = bookingService.getAllBookings();
+        return ApiResponse.ok(bookings, "Lấy danh sách toàn bộ đơn đặt tour thành công");
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('TOURIST', 'GUIDE', 'ADMIN')")
     public ApiResponse<BookingDetailVm> getBookingById(@PathVariable UUID id) {

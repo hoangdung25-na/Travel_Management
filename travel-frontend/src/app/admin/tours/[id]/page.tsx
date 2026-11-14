@@ -27,10 +27,15 @@ export default function AdminTourDetailPage({ params }: { params: Promise<{ id: 
   const [savingSchedule, setSavingSchedule] = useState(false);
 
   function load() {
-    tourService.getById(id).then((data) => {
-      setTour(data);
-      setStatus(data.status);
-    });
+    tourService
+      .getById(id)
+      .then((data) => {
+        setTour(data);
+        setStatus(data.status);
+      })
+      .catch((err) => {
+        console.warn("Không tìm thấy tour:", err);
+      });
   }
 
   useEffect(load, [id]);

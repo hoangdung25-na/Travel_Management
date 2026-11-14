@@ -124,6 +124,14 @@ export interface TourVm {
   destinationCity?: string;
 }
 
+export interface TourImageVm {
+  id?: string;
+  imageUrl: string;
+  caption?: string;
+  isPrimary?: boolean;
+  displayOrder?: number;
+}
+
 export interface TourDetailVm {
   tourId: string;
   code: string;
@@ -137,6 +145,7 @@ export interface TourDetailVm {
   destinations: DestinationVm[];
   imageUrl?: string;
   galleryUrls?: string[];
+  images?: TourImageVm[];
   rating?: number;
   reviewCount?: number;
   duration?: string;
@@ -149,6 +158,8 @@ export interface TourSearchCriteria {
   destination?: string;
   minPrice?: number;
   maxPrice?: number;
+  status?: TourStatus;
+  allStatus?: boolean;
   page?: number;
   size?: number;
 }
@@ -167,13 +178,18 @@ export interface CreateTourRequest {
   destinationIds?: string[];
   imageUrl?: string;
   duration?: string;
+  status?: TourStatus;
+  images?: TourImageVm[];
 }
 
 export interface UpdateTourRequest {
   title: string;
   description: string;
   status?: TourStatus;
+  imageUrl?: string;
+  duration?: string;
   destinationIds?: string[];
+  images?: TourImageVm[];
 }
 
 export interface CreateScheduleRequest {
@@ -186,6 +202,13 @@ export interface CreateScheduleRequest {
 }
 
 export interface CreateDestinationRequest {
+  name: string;
+  city: string;
+  country: string;
+  imageUrl?: string;
+}
+
+export interface UpdateDestinationRequest {
   name: string;
   city: string;
   country: string;

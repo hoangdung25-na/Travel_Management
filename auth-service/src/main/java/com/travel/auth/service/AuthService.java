@@ -19,4 +19,11 @@ public interface AuthService {
     UserProfileVm getProfile(UUID userId);
     UserProfileVm updateProfile(UUID userId, UpdateProfileRequest request, MultipartFile avatarFile);
     UserVm updateUserStatus(UUID userId, AccountStatus status);
+    java.util.List<UserVm> getAllUsers();
+    UserVm adminUpdateUser(UUID userId, com.travel.auth.dto.AdminUpdateUserRequest request);
+    void adminDeleteUser(UUID userId);
+    AuthTokenVm loginWithGoogle(com.travel.auth.dto.GoogleLoginRequest request);
+    void sendForgotPasswordOtp(String email);
+    boolean verifyForgotPasswordOtp(String email, String otp);
+    void resetPassword(com.travel.auth.dto.ResetPasswordRequest request);
 }

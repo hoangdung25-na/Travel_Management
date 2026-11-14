@@ -9,6 +9,7 @@ public record DestinationVm(
         UUID id,
         String name,
         String city,
-        String country
+        String country,
+        String imageUrl
 ) {
 }

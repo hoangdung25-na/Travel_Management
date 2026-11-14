@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Manrope } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ToastProvider } from "@/lib/toast-context";
@@ -26,8 +27,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={`${fraunces.variable} ${manrope.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-paper text-ink">
+    <html lang="vi" className={`${fraunces.variable} ${manrope.variable} h-full antialiased`} suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-paper text-ink" suppressHydrationWarning>
+        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
         <ToastProvider>
           <AuthProvider>
             <Header />

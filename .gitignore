@@ -35,6 +35,7 @@
 
 # Logs & Databases
 *.log
+logs/
 *.sqlite
 *.db
 
@@ -44,3 +45,6 @@ Thumbs.db
 
 # Markdown files
 *.md
+!README.md
+!design/
+!design/*.md

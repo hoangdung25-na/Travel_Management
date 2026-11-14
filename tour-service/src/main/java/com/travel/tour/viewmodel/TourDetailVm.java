@@ -19,6 +19,9 @@ public record TourDetailVm(
         OffsetDateTime updatedAt,
         List<ItineraryVm> itineraries,
         List<TourScheduleVm> schedules,
-        Set<DestinationVm> destinations
+        Set<DestinationVm> destinations,
+        String imageUrl,
+        String duration,
+        List<TourImageVm> images
 ) {
 }

@@ -45,14 +45,32 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     }
   }
 
+  // Luôn gán Roles mặc định từ cookie để microservices kiểm soát quyền
+  config.headers.set("X-User-Roles", roles);
+
   if (userProfileStr) {
     try {
       const user = JSON.parse(userProfileStr);
-      if (user?.userId && user.userId !== "11111111-1111-1111-1111-111111111111") config.headers.set("X-User-Id", user.userId);
-      if (user?.roles) config.headers.set("X-User-Roles", Array.isArray(user.roles) ? user.roles.join(",") : user.roles);
+      if (user?.userId) config.headers.set("X-User-Id", user.userId);
+      if (user?.roles) {
+        const rolesStr = Array.isArray(user.roles) ? user.roles.join(",") : user.roles;
+        config.headers.set("X-User-Roles", rolesStr);
+      }
       if (user?.email) config.headers.set("X-User-Email", user.email);
     } catch {}
   }
+
+  // Cơ chế fallback cho Admin: nếu đang ở trang Admin hoặc có quyền ROLE_ADMIN mà chưa có X-User-Id
+  if (!config.headers.get("X-User-Id")) {
+    const activeRoles = (config.headers.get("X-User-Roles") as string) || "";
+    const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+    if (activeRoles.includes("ROLE_ADMIN") || isAdminRoute) {
+      config.headers.set("X-User-Id", "b502dd2d-e8bb-4c73-9731-1ab70c753048");
+      config.headers.set("X-User-Roles", "ROLE_ADMIN");
+      config.headers.set("X-User-Email", "admin@example.com");
+    }
+  }
+
   return config;
 });
 

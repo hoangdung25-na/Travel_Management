@@ -10,6 +10,7 @@ import {
   TourScheduleVm,
   TourSearchCriteria,
   TourVm,
+  UpdateDestinationRequest,
   UpdateTourRequest,
 } from "../types";
 
@@ -36,6 +37,9 @@ export const tourService = {
       apiClient.put<ApiResponse<TourDetailVm>>(`/api/v1/tours/${id}`, payload)
     ),
 
+  delete: (id: string): Promise<void> =>
+    unwrap<void>(apiClient.delete<ApiResponse<void>>(`/api/v1/tours/${id}`)),
+
   addSchedule: (tourId: string, payload: CreateScheduleRequest): Promise<TourScheduleVm> =>
     unwrap<TourScheduleVm>(
       apiClient.post<ApiResponse<TourScheduleVm>>(
@@ -52,5 +56,15 @@ export const tourService = {
   createDestination: (payload: CreateDestinationRequest): Promise<DestinationVm> =>
     unwrap<DestinationVm>(
       apiClient.post<ApiResponse<DestinationVm>>("/api/v1/destinations", payload)
+    ),
+
+  updateDestination: (id: string, payload: UpdateDestinationRequest): Promise<DestinationVm> =>
+    unwrap<DestinationVm>(
+      apiClient.put<ApiResponse<DestinationVm>>(`/api/v1/destinations/${id}`, payload)
+    ),
+
+  deleteDestination: (id: string): Promise<void> =>
+    unwrap<void>(
+      apiClient.delete<ApiResponse<void>>(`/api/v1/destinations/${id}`)
     ),
 };

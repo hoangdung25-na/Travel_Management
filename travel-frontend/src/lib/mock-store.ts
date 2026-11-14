@@ -161,6 +161,7 @@ export class MockStore {
       updatedAt: new Date().toISOString(),
       duration: req.duration ?? "3 Ngày 2 Đêm",
       imageUrl: req.imageUrl ?? "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80",
+      images: req.images ?? [],
       rating: 5.0,
       reviewCount: 1,
       includedServices: ["Xe du lịch đời mới", "Khách sạn 4 sao", "Hướng dẫn viên", "Các bữa ăn theo chương trình"],

@@ -45,7 +45,12 @@ public class GeminiEmbeddingConfig {
             this.apiKey = apiKey;
             String cleanBase = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
             this.endpointUrl = cleanBase + "embeddings";
-            this.restTemplate = new RestTemplate();
+            
+            org.springframework.http.client.SimpleClientHttpRequestFactory requestFactory = 
+                    new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            requestFactory.setConnectTimeout(10000); // 10s
+            requestFactory.setReadTimeout(45000);    // 45s
+            this.restTemplate = new RestTemplate(requestFactory);
         }
 
         @Override

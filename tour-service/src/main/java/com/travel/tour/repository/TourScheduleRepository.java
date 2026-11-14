@@ -17,7 +17,8 @@ public interface TourScheduleRepository extends JpaRepository<TourScheduleEntity
 
     List<TourScheduleEntity> findByTourId(UUID tourId);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)// khóa bi quan khi sửa
     @Query("SELECT s FROM TourScheduleEntity s WHERE s.id = :id")
     Optional<TourScheduleEntity> findByIdWithLock(@Param("id") UUID id);
 }
+//  khóa lạc quan optimistic khóa khi người dùng úpte và kiểm tra cột version khi ứng dụng cần hiệu năng cao

@@ -1,5 +1,6 @@
 package com.travel.tour.dto;
 
+import com.travel.tour.constant.TourStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -24,10 +25,18 @@ public record CreateTourRequest(
         @NotBlank(message = "Mô tả tour không được để trống")
         String description,
 
+        String imageUrl,
+
+        String duration,
+
+        TourStatus status,
+
         @NotEmpty(message = "Danh sách lịch trình không được để trống")
         @Valid
         List<CreateItineraryRequest> itineraries,
 
-        Set<UUID> destinationIds
+        Set<UUID> destinationIds,
+
+        List<TourImageRequest> images
 ) {
 }

@@ -16,18 +16,4 @@ public interface TourRepository extends JpaRepository<TourEntity, UUID>, JpaSpec
     Optional<TourEntity> findByCode(String code);
 
     boolean existsByCode(String code);
-
-    @Query("SELECT DISTINCT t FROM TourEntity t " +
-           "LEFT JOIN FETCH t.itineraries " +
-           "LEFT JOIN FETCH t.schedules " +
-           "LEFT JOIN FETCH t.destinations " +
-           "WHERE t.id = :id")
-    Optional<TourEntity> findByIdWithDetails(@Param("id") UUID id);
-
-    @Query("SELECT DISTINCT t FROM TourEntity t " +
-           "LEFT JOIN FETCH t.itineraries " +
-           "LEFT JOIN FETCH t.schedules " +
-           "LEFT JOIN FETCH t.destinations " +
-           "WHERE t.code = :code")
-    Optional<TourEntity> findByCodeWithDetails(@Param("code") String code);
 }

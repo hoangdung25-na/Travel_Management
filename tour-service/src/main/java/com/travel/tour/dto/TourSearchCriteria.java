@@ -1,5 +1,6 @@
 package com.travel.tour.dto;
 
+import com.travel.tour.constant.TourStatus;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Builder;
 
@@ -15,6 +16,9 @@ public record TourSearchCriteria(
 
         @PositiveOrZero(message = "Giá tối đa phải lớn hơn hoặc bằng 0")
         BigDecimal maxPrice,
+
+        TourStatus status,
+        Boolean allStatus,
 
         Integer page,
         Integer size

@@ -21,6 +21,8 @@ public interface TourService {
 
     TourDetailVm updateTour(UUID id, UpdateTourRequest request);
 
+    void deleteTour(UUID id);
+
     TourScheduleVm addSchedule(UUID tourId, CreateScheduleRequest request);
 
     TourScheduleVm getScheduleById(UUID scheduleId);

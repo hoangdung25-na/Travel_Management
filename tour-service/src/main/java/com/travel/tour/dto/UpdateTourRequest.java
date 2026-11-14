@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -19,6 +20,12 @@ public record UpdateTourRequest(
 
         TourStatus status,
 
-        Set<UUID> destinationIds
+        String imageUrl,
+
+        String duration,
+
+        Set<UUID> destinationIds,
+
+        List<TourImageRequest> images
 ) {
 }

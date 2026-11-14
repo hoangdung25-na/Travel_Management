@@ -44,6 +44,34 @@ public class AuthController {
         return ApiResponse.ok(tokenVm, "Đăng nhập thành công");
     }
 
+    @PostMapping("/google")
+    public ApiResponse<AuthTokenVm> loginWithGoogle(@Valid @RequestBody com.travel.auth.dto.GoogleLoginRequest request) {
+        log.info("Received Google login request for email: {}", request.getEmail());
+        AuthTokenVm tokenVm = authService.loginWithGoogle(request);
+        return ApiResponse.ok(tokenVm, "Đăng nhập Google thành công");
+    }
+
+    @PostMapping("/forgot-password/send-otp")
+    public ApiResponse<String> sendForgotPasswordOtp(@Valid @RequestBody com.travel.auth.dto.ForgotPasswordSendOtpRequest request) {
+        log.info("Received forgot password request for email: {}", request.getEmail());
+        authService.sendForgotPasswordOtp(request.getEmail());
+        return ApiResponse.ok("Mã xác thực OTP đã được gửi đến email của bạn", "Gửi mã OTP thành công");
+    }
+
+    @PostMapping("/forgot-password/verify-otp")
+    public ApiResponse<Boolean> verifyForgotPasswordOtp(@Valid @RequestBody com.travel.auth.dto.ForgotPasswordVerifyOtpRequest request) {
+        log.info("Received verify OTP request for email: {}", request.getEmail());
+        boolean valid = authService.verifyForgotPasswordOtp(request.getEmail(), request.getOtp());
+        return ApiResponse.ok(valid, "Mã OTP hợp lệ");
+    }
+
+    @PostMapping("/forgot-password/reset")
+    public ApiResponse<String> resetPassword(@Valid @RequestBody com.travel.auth.dto.ResetPasswordRequest request) {
+        log.info("Received reset password request for email: {}", request.getEmail());
+        authService.resetPassword(request);
+        return ApiResponse.ok("Cập nhật mật khẩu thành công. Vui lòng đăng nhập lại.", "Đặt lại mật khẩu thành công");
+    }
+
     @PostMapping("/refresh-token")
     public ApiResponse<AuthTokenVm> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         log.info("Received refresh token request");

@@ -15,4 +15,22 @@ export const adminService = {
         { params: { status: "ACTIVE" } }
       )
     ),
+
+  updateUser: (
+    userId: string,
+    payload: {
+      fullName: string;
+      phoneNumber?: string;
+      status?: string;
+      roles?: string[];
+    }
+  ): Promise<UserVm> =>
+    unwrap<UserVm>(
+      apiClient.put<ApiResponse<UserVm>>(`/api/v1/auth/admin/users/${userId}`, payload)
+    ),
+
+  deleteUser: (userId: string): Promise<void> =>
+    unwrap<void>(
+      apiClient.delete<ApiResponse<void>>(`/api/v1/auth/admin/users/${userId}`)
+    ),
 };

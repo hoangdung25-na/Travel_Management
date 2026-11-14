@@ -28,26 +28,12 @@ if (Test-Path $envFile) {
 # 1. Start Infrastructure Docker Containers
 Write-Host "`n[1/4] Dang khoi chay Ha Tang Docker (PostgreSQL pgvector, Redis, Kafka, Kafka UI)..." -ForegroundColor Yellow
 Set-Location -Path $ROOT_DIR
-docker-compose up -d
+docker-compose up -d travel-postgres travel-redis travel-kafka travel-kafka-ui
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host " Docker-compose gap loi. Vui long kiem tra Docker Desktop!" -ForegroundColor Red
     exit 1
 }
-
-# 2. Build Java Microservices
-Write-Host "`n[2/4] Dang bien dich va dong goi tat ca Java Microservices (Maven)..." -ForegroundColor Yellow
-Get-Process -Name "java" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 2
-mvn clean package -DskipTests
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host " Bien dich Maven gap loi. Vui long kiem tra code Java!" -ForegroundColor Red
-    exit 1
-}
-
-# 3. Launch 6 Java Microservices in background processes
-Write-Host "`n[3/4] Dang khoi chay 6 Backend Microservices..." -ForegroundColor Yellow
 
 $services = @(
     @{ Name = "API Gateway (Port 8080)";     Jar = "api-gateway\target\api-gateway-1.0.0-SNAPSHOT.jar" },
@@ -58,11 +44,39 @@ $services = @(
     @{ Name = "AI Service (Port 8085)";      Jar = "ai-service\target\ai-service-1.0.0-SNAPSHOT.jar" }
 )
 
+# 2. Build Java Microservices
+Write-Host "`n[2/4] Kiem tra va dong goi cac Java Microservices..." -ForegroundColor Yellow
+$missingJar = $false
+foreach ($s in $services) {
+    if (-not (Test-Path (Join-Path $ROOT_DIR $s.Jar))) {
+        $missingJar = $true
+        break
+    }
+}
+
+if ($missingJar) {
+    Write-Host " Dang bien dich Maven toan bo du an (clean install)..." -ForegroundColor Yellow
+    Get-Process -Name "java" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    mvn clean install -DskipTests
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host " Bien dich Maven gap loi. Vui long kiem tra code Java!" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host " Cac file JAR da co san! Bo qua buoc build de khoi dong ngay lap tuc." -ForegroundColor Green
+    Get-Process -Name "java" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+}
+
+# 3. Launch 6 Java Microservices in background processes
+Write-Host "`n[3/4] Dang khoi chay 6 Backend Microservices..." -ForegroundColor Yellow
+
 foreach ($s in $services) {
     $jarPath = Join-Path $ROOT_DIR $s.Jar
     if (Test-Path $jarPath) {
         Write-Host " -> Dang khoi chay $($s.Name)..." -ForegroundColor Green
-        Start-Process -FilePath "java" -ArgumentList "-jar", "`"$jarPath`"" -WindowStyle Minimized
+        Start-Process -FilePath "java" -ArgumentList "-Djava.net.preferIPv4Stack=true", "-Xms128m", "-Xmx384m", "-jar", $jarPath -WorkingDirectory $ROOT_DIR -WindowStyle Minimized
     } else {
         Write-Host " Khong tim thay file Jar: $($s.Jar)" -ForegroundColor Red
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -17,6 +17,11 @@ import {
   Minus,
   Sparkles,
   Ticket,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Image as ImageIcon,
+  Maximize2,
 } from "lucide-react";
 import { tourService } from "@/lib/services/tour-service";
 import { bookingService } from "@/lib/services/booking-service";
@@ -25,8 +30,6 @@ import { TourDetailVm, TourScheduleVm, PassengerRequest } from "@/lib/types";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
-import { MOCK_TOURS } from "@/lib/mock-data";
-
 export default function TourDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -34,12 +37,13 @@ export default function TourDetailPage({ params }: { params: Promise<{ id: strin
 
   const [tour, setTour] = useState<TourDetailVm | null | "error">(null);
   const [selectedSchedule, setSelectedSchedule] = useState<TourScheduleVm | null>(null);
+  const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
 
   // Passenger counts
   const [adultCount, setAdultCount] = useState(1);
   const [childCount, setChildCount] = useState(0);
   const [passengers, setPassengers] = useState<PassengerRequest[]>([
-    { fullName: user?.fullName ?? "Nguyễn Văn Tourist", passengerType: "ADULT", idCardNumber: "040099123456" },
+    { fullName: user?.fullName ?? "Họ và tên hành khách", passengerType: "ADULT", idCardNumber: "" },
   ]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,23 +58,78 @@ export default function TourDetailPage({ params }: { params: Promise<{ id: strin
           const validSch = data.schedules?.find((s) => s.availableSeats > 0) ?? data.schedules?.[0] ?? null;
           setSelectedSchedule(validSch);
         } else {
-          const mock = MOCK_TOURS.find((t) => t.tourId === id) ?? MOCK_TOURS[0];
-          setTour(mock as any);
-          const validSch = mock.schedules?.find((s) => s.availableSeats > 0) ?? mock.schedules?.[0] ?? null;
-          setSelectedSchedule(validSch as any);
+          setTour("error");
         }
       })
       .catch(() => {
-        const mock = MOCK_TOURS.find((t) => t.tourId === id) ?? MOCK_TOURS[0];
-        if (mock) {
-          setTour(mock as any);
-          const validSch = mock.schedules?.find((s) => s.availableSeats > 0) ?? mock.schedules?.[0] ?? null;
-          setSelectedSchedule(validSch as any);
-        } else {
-          setTour("error");
-        }
+        setTour("error");
       });
   }, [id]);
+
+  // Resolve all images for this tour (Hook called unconditionally)
+  const tourImages = useMemo(() => {
+    if (!tour || tour === "error") return [];
+
+    // 1. From database tour_images table (tour.images)
+    if (tour.images && tour.images.length > 0) {
+      const sorted = [...tour.images].sort((a, b) => {
+        if (a.isPrimary) return -1;
+        if (b.isPrimary) return 1;
+        return (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+      });
+      return sorted
+        .filter((img) => img.imageUrl && img.imageUrl.trim().length > 0)
+        .map((img) => ({
+          url: img.imageUrl,
+          caption: img.caption || tour.title,
+        }));
+    }
+
+    // 2. From tour.galleryUrls if exists
+    if (tour.galleryUrls && tour.galleryUrls.length > 0) {
+      return tour.galleryUrls.map((url, i) => ({
+        url,
+        caption: `${tour.title} (Ảnh ${i + 1})`,
+      }));
+    }
+
+    // 3. From tour.imageUrl and destinations images (smart contextual fallback)
+    const list: { url: string; caption?: string }[] = [];
+    if (tour.imageUrl) {
+      list.push({ url: tour.imageUrl, caption: tour.title });
+    }
+    if (tour.destinations && tour.destinations.length > 0) {
+      tour.destinations.forEach((d) => {
+        if (d.imageUrl && !list.some((item) => item.url === d.imageUrl)) {
+          list.push({ url: d.imageUrl, caption: `${d.name}, ${d.city}` });
+        }
+      });
+    }
+
+    if (list.length === 0) {
+      list.push({
+        url: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=1200&q=80",
+        caption: tour.title,
+      });
+    }
+    return list;
+  }, [tour]);
+
+  // Keyboard navigation for lightbox (Hook called unconditionally)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (activeLightboxIndex === null) return;
+      if (e.key === "Escape") setActiveLightboxIndex(null);
+      if (e.key === "ArrowLeft") {
+        setActiveLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : tourImages.length - 1));
+      }
+      if (e.key === "ArrowRight") {
+        setActiveLightboxIndex((prev) => (prev !== null && prev < tourImages.length - 1 ? prev + 1 : 0));
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeLightboxIndex, tourImages.length]);
 
   function updatePassengerCounts(newAdults: number, newChildren: number) {
     if (newAdults < 1) return;
@@ -177,27 +236,121 @@ export default function TourDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      {/* Main Image Gallery */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-3xl overflow-hidden shadow-lg h-96">
-        <div className="md:col-span-2 relative h-full">
-          <img
-            src={tour.imageUrl ?? "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80"}
-            alt={tour.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div className="hidden md:flex flex-col gap-4 h-full">
-          <img
-            src={tour.galleryUrls?.[1] ?? "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80"}
-            alt="Gallery 1"
-            className="w-full h-1/2 object-cover rounded-tr-2xl"
-          />
-          <img
-            src={tour.galleryUrls?.[2] ?? "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80"}
-            alt="Gallery 2"
-            className="w-full h-1/2 object-cover rounded-br-2xl"
-          />
-        </div>
+      {/* Dynamic Image Gallery */}
+      <div className="relative">
+        {tourImages.length === 1 && (
+          <div
+            onClick={() => setActiveLightboxIndex(0)}
+            className="h-96 w-full rounded-3xl overflow-hidden shadow-lg relative group cursor-pointer border border-[#e7e0d3]"
+          >
+            <img
+              src={tourImages[0].url}
+              alt={tourImages[0].caption || tour.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+            <div className="absolute bottom-4 left-6 right-6 flex items-center justify-between text-white">
+              <span className="text-sm font-semibold line-clamp-1">{tourImages[0].caption}</span>
+              <span className="text-xs font-bold bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                <Maximize2 size={13} /> Phóng to ảnh
+              </span>
+            </div>
+          </div>
+        )}
+
+        {tourImages.length === 2 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-3xl overflow-hidden shadow-lg h-96 border border-[#e7e0d3]">
+            {tourImages.map((img, i) => (
+              <div
+                key={i}
+                onClick={() => setActiveLightboxIndex(i)}
+                className="relative h-full group cursor-pointer overflow-hidden"
+              >
+                <img
+                  src={img.url}
+                  alt={img.caption || `Ảnh ${i + 1}`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-90 transition-opacity" />
+                <div className="absolute bottom-3 left-4 right-4 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-xs font-semibold">{img.caption}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tourImages.length >= 3 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-3xl overflow-hidden shadow-lg h-96 border border-[#e7e0d3]">
+            {/* Main large image on left */}
+            <div
+              onClick={() => setActiveLightboxIndex(0)}
+              className="md:col-span-2 relative h-full group cursor-pointer overflow-hidden"
+            >
+              <img
+                src={tourImages[0].url}
+                alt={tourImages[0].caption || tour.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+              <div className="absolute bottom-4 left-6 right-6 text-white">
+                <span className="text-xs uppercase tracking-wider text-[#D4A24C] font-bold block mb-0.5">Ảnh Đại Diện Tour</span>
+                <span className="text-sm font-semibold line-clamp-1">{tourImages[0].caption}</span>
+              </div>
+            </div>
+
+            {/* 2 stacked images on right */}
+            <div className="hidden md:flex flex-col gap-4 h-full">
+              <div
+                onClick={() => setActiveLightboxIndex(1)}
+                className="relative h-1/2 rounded-tr-2xl group cursor-pointer overflow-hidden"
+              >
+                <img
+                  src={tourImages[1].url}
+                  alt={tourImages[1].caption || "Ảnh 2"}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 rounded-tr-2xl"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                {tourImages[1].caption && (
+                  <div className="absolute bottom-2 left-3 right-3 text-white text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity line-clamp-1">
+                    {tourImages[1].caption}
+                  </div>
+                )}
+              </div>
+
+              <div
+                onClick={() => setActiveLightboxIndex(2)}
+                className="relative h-1/2 rounded-br-2xl group cursor-pointer overflow-hidden"
+              >
+                <img
+                  src={tourImages[2].url}
+                  alt={tourImages[2].caption || "Ảnh 3"}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 rounded-br-2xl"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                {tourImages.length > 3 && (
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center text-white font-bold text-sm gap-1.5 transition-colors hover:bg-black/50">
+                    <ImageIcon size={16} />
+                    <span>+{tourImages.length - 3} ảnh khác</span>
+                  </div>
+                )}
+                {tourImages.length === 3 && tourImages[2].caption && (
+                  <div className="absolute bottom-2 left-3 right-3 text-white text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity line-clamp-1">
+                    {tourImages[2].caption}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* View all photos pill button */}
+        <button
+          onClick={() => setActiveLightboxIndex(0)}
+          className="absolute bottom-4 right-4 bg-white/90 hover:bg-white text-stone-900 text-xs font-bold px-3.5 py-2 rounded-xl shadow-lg backdrop-blur-md border border-stone-200 flex items-center gap-1.5 transition-all hover:scale-105"
+        >
+          <ImageIcon size={14} className="text-[#E2603F]" /> Xem toàn bộ ảnh ({tourImages.length})
+        </button>
       </div>
 
       {/* Grid Content: Details & Booking Sidebar */}
@@ -392,6 +545,86 @@ export default function TourDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       </div>
+
+      {/* Interactive Lightbox Modal */}
+      {activeLightboxIndex !== null && (
+        <div className="fixed inset-0 bg-black/95 z-50 flex flex-col justify-between p-4 sm:p-6 backdrop-blur-md animate-in fade-in">
+          {/* Top Bar */}
+          <div className="flex items-center justify-between text-white border-b border-white/10 pb-3">
+            <div>
+              <h3 className="font-bold text-sm sm:text-base line-clamp-1">{tour.title}</h3>
+              <p className="text-xs text-stone-400">
+                Ảnh {activeLightboxIndex + 1} trên {tourImages.length}
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveLightboxIndex(null)}
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Center: Image & Controls */}
+          <div className="relative flex-1 flex items-center justify-center my-4">
+            {tourImages.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : tourImages.length - 1));
+                }}
+                className="absolute left-2 sm:left-4 z-10 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-md transition-all hover:scale-110"
+              >
+                <ChevronLeft size={22} />
+              </button>
+            )}
+
+            <div className="max-h-[70vh] flex flex-col items-center justify-center max-w-4xl px-2">
+              <img
+                src={tourImages[activeLightboxIndex].url}
+                alt={tourImages[activeLightboxIndex].caption || "Tour Photo"}
+                className="max-h-[65vh] max-w-full object-contain rounded-2xl shadow-2xl"
+              />
+              {tourImages[activeLightboxIndex].caption && (
+                <p className="mt-3 text-center text-xs sm:text-sm text-stone-300 font-medium bg-black/40 px-4 py-1.5 rounded-full border border-white/10">
+                  {tourImages[activeLightboxIndex].caption}
+                </p>
+              )}
+            </div>
+
+            {tourImages.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveLightboxIndex((prev) => (prev !== null && prev < tourImages.length - 1 ? prev + 1 : 0));
+                }}
+                className="absolute right-2 sm:right-4 z-10 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-md transition-all hover:scale-110"
+              >
+                <ChevronRight size={22} />
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Thumbnails Strip */}
+          {tourImages.length > 1 && (
+            <div className="flex items-center justify-center gap-2 overflow-x-auto py-2 border-t border-white/10 max-w-2xl mx-auto w-full">
+              {tourImages.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveLightboxIndex(idx)}
+                  className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
+                    idx === activeLightboxIndex
+                      ? "border-[#D4A24C] scale-105 opacity-100"
+                      : "border-transparent opacity-50 hover:opacity-80"
+                  }`}
+                >
+                  <img src={img.url} alt={`thumb ${idx}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

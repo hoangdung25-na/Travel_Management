@@ -139,6 +139,16 @@ public class BookingServiceImpl implements BookingService {
         return total;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<BookingDetailVm> getAllBookings() {
+        log.info("Admin tra cứu toàn bộ danh sách đơn đặt tour");
+        return bookingRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"))
+                .stream()
+                .map(bookingMapper::toBookingDetailVm)
+                .toList();
+    }
+
     private BigDecimal calculatePassengerPrice(PassengerType passengerType, TourScheduleResponse scheduleInfo) {
         if (passengerType == PassengerType.CHILD) {
             return scheduleInfo.priceChild() != null ? scheduleInfo.priceChild() : scheduleInfo.priceAdult().multiply(new BigDecimal("0.75"));

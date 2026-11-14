@@ -12,12 +12,12 @@ import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "tours")
-@Getter
+@Table(name = "tours")//jpa anotaion
+@Getter// loobok aanotation tự tạo getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder// cho phép tạo object theo 
 public class TourEntity {
 
     @Id
@@ -32,6 +32,12 @@ public class TourEntity {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "duration", length = 100)
+    private String duration;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
@@ -51,6 +57,11 @@ public class TourEntity {
     @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<ItineraryEntity> itineraries = new ArrayList<>();
+
+    @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("displayOrder ASC")
+    @Builder.Default
+    private List<TourImageEntity> images = new ArrayList<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

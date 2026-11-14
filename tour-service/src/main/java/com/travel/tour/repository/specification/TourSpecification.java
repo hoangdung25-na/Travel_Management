@@ -23,8 +23,15 @@ public final class TourSpecification {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
 
-            // Chỉ hiển thị các Tour đang ở trạng thái mở bán (PUBLISHED)
-            predicates.add(cb.equal(root.get("status"), TourStatus.PUBLISHED));
+            // Lọc theo trạng thái
+            if (Boolean.TRUE.equals(criteria.allStatus())) {
+                // Không filter status nếu yêu cầu lấy tất cả trạng thái (ví dụ phía admin)
+            } else if (criteria.status() != null) {
+                predicates.add(cb.equal(root.get("status"), criteria.status()));
+            } else {
+                // Mặc định cho khách hàng: chỉ hiển thị các Tour đang ở trạng thái mở bán (PUBLISHED)
+                predicates.add(cb.equal(root.get("status"), TourStatus.PUBLISHED));
+            }
 
             // Lọc theo từ khóa tìm kiếm (title, code, description)
             if (criteria.keyword() != null && !criteria.keyword().trim().isEmpty()) {

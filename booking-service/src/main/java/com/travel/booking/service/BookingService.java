@@ -22,4 +22,7 @@ public interface BookingService {
 
     // Yêu cầu hủy đơn đặt tour
     BookingVm cancelBooking(UUID userId, UUID bookingId, CancelBookingRequest request);
+
+    // Lấy toàn bộ đơn đặt tour cho Admin
+    java.util.List<BookingDetailVm> getAllBookings();
 }

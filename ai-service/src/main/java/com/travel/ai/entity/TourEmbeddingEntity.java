@@ -25,20 +25,21 @@ public class TourEmbeddingEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "tour_id", nullable = false)
+    @Column(name = "tour_id")
     private UUID tourId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "chunk_type", nullable = false, length = 50)
+    @Column(name = "chunk_type", length = 50)
     private ChunkType chunkType;
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "jsonb")
     private String metadata;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

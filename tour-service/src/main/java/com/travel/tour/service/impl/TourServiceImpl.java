@@ -12,6 +12,7 @@ import com.travel.tour.dto.UpdateTourRequest;
 import com.travel.tour.entity.DestinationEntity;
 import com.travel.tour.entity.OutboxEventEntity;
 import com.travel.tour.entity.TourEntity;
+import com.travel.tour.entity.TourImageEntity;
 import com.travel.tour.entity.TourScheduleEntity;
 import com.travel.tour.mapper.TourMapper;
 import com.travel.tour.mapper.TourScheduleMapper;
@@ -24,6 +25,7 @@ import com.travel.tour.service.TourService;
 import com.travel.tour.viewmodel.TourDetailVm;
 import com.travel.tour.viewmodel.TourScheduleVm;
 import com.travel.tour.viewmodel.TourVm;
+import com.travel.tour.constant.TourStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -34,8 +36,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -57,14 +61,44 @@ public class TourServiceImpl implements TourService {
         log.info("Tạo mới Tour với mã: {}", request.code());
 
         if (tourRepository.existsByCode(request.code())) {
-            throw BusinessException.of(ErrorCode.TOUR_CODE_EXISTS, "Mã Tour đã tồn tại trong hệ thống: " + request.code());
+            throw BusinessException.of(ErrorCode.TOUR_CODE_EXISTS,
+                    "Mã Tour đã tồn tại trong hệ thống: " + request.code());
         }
 
         TourEntity tour = tourMapper.toEntity(request);
+        if (request.status() != null) {
+            tour.setStatus(request.status());
+        } else {
+            tour.setStatus(TourStatus.PUBLISHED);
+        }
+        if (request.imageUrl() != null) {
+            tour.setImageUrl(request.imageUrl());
+        }
+        if (request.duration() != null) {
+            tour.setDuration(request.duration());
+        }
 
         // Gắn quan hệ 2 chiều giữa Tour và Itineraries
         if (tour.getItineraries() != null) {
             tour.getItineraries().forEach(itinerary -> itinerary.setTour(tour));
+        }
+
+        // Đính kèm danh sách ảnh (Gallery) nếu có
+        if (request.images() != null && !request.images().isEmpty()) {
+            List<TourImageEntity> images = new ArrayList<>();
+            for (int i = 0; i < request.images().size(); i++) {
+                var imgReq = request.images().get(i);
+                if (imgReq.imageUrl() != null && !imgReq.imageUrl().isBlank()) {
+                    images.add(TourImageEntity.builder()
+                            .tour(tour)
+                            .imageUrl(imgReq.imageUrl().trim())
+                            .caption(imgReq.caption())
+                            .isPrimary(Boolean.TRUE.equals(imgReq.isPrimary()))
+                            .displayOrder(imgReq.displayOrder() != null ? imgReq.displayOrder() : i)
+                            .build());
+                }
+            }
+            tour.setImages(images);
         }
 
         // Đính kèm danh sách địa điểm nếu có
@@ -89,9 +123,14 @@ public class TourServiceImpl implements TourService {
         TourEntity tour = tourRepository.findById(id)
                 .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_NOT_FOUND, "Không tìm thấy Tour với ID: " + id));
 
-        if (tour.getItineraries() != null) tour.getItineraries().size();
-        if (tour.getSchedules() != null) tour.getSchedules().size();
-        if (tour.getDestinations() != null) tour.getDestinations().size();
+        if (tour.getItineraries() != null)
+            tour.getItineraries().size();
+        if (tour.getSchedules() != null)
+            tour.getSchedules().size();
+        if (tour.getDestinations() != null)
+            tour.getDestinations().size();
+        if (tour.getImages() != null)
+            tour.getImages().size();
 
         return tourMapper.toTourDetailVm(tour);
     }
@@ -110,12 +149,18 @@ public class TourServiceImpl implements TourService {
 
         if (tour == null) {
             tour = tourRepository.findByCode(idOrCode)
-                    .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_NOT_FOUND, "Không tìm thấy Tour với mã/ID: " + idOrCode));
+                    .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_NOT_FOUND,
+                            "Không tìm thấy Tour với mã/ID: " + idOrCode));
         }
 
-        if (tour.getItineraries() != null) tour.getItineraries().size();
-        if (tour.getSchedules() != null) tour.getSchedules().size();
-        if (tour.getDestinations() != null) tour.getDestinations().size();
+        if (tour.getItineraries() != null)
+            tour.getItineraries().size();
+        if (tour.getSchedules() != null)
+            tour.getSchedules().size();
+        if (tour.getDestinations() != null)
+            tour.getDestinations().size();
+        if (tour.getImages() != null)
+            tour.getImages().size();
 
         return tourMapper.toTourDetailVm(tour);
     }
@@ -124,7 +169,7 @@ public class TourServiceImpl implements TourService {
     @Transactional
     public TourDetailVm updateTour(UUID id, UpdateTourRequest request) {
         log.info("Cập nhật thông tin Tour ID: {}", id);
-        TourEntity tour = tourRepository.findByIdWithDetails(id)
+        TourEntity tour = tourRepository.findById(id)
                 .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_NOT_FOUND, "Không tìm thấy Tour với ID: " + id));
 
         tour.setTitle(request.title());
@@ -132,13 +177,51 @@ public class TourServiceImpl implements TourService {
         if (request.status() != null) {
             tour.setStatus(request.status());
         }
+        if (request.imageUrl() != null) {
+            tour.setImageUrl(request.imageUrl());
+        }
+        if (request.duration() != null) {
+            tour.setDuration(request.duration());
+        }
 
         if (request.destinationIds() != null) {
             List<DestinationEntity> destinations = destinationRepository.findByIdIn(request.destinationIds());
             tour.setDestinations(new HashSet<>(destinations));
         }
 
+        // Cập nhật danh sách ảnh Gallery nếu được truyền lên
+        if (request.images() != null) {
+            if (tour.getImages() == null) {
+                tour.setImages(new ArrayList<>());
+            } else {
+                tour.getImages().clear();
+            }
+            for (int i = 0; i < request.images().size(); i++) {
+                var imgReq = request.images().get(i);
+                if (imgReq.imageUrl() != null && !imgReq.imageUrl().isBlank()) {
+                    tour.getImages().add(TourImageEntity.builder()
+                            .tour(tour)
+                            .imageUrl(imgReq.imageUrl().trim())
+                            .caption(imgReq.caption())
+                            .isPrimary(Boolean.TRUE.equals(imgReq.isPrimary()))
+                            .displayOrder(imgReq.displayOrder() != null ? imgReq.displayOrder() : i)
+                            .build());
+                }
+            }
+        }
+
         TourEntity updatedTour = tourRepository.save(tour);
+
+        // Nạp lazy collections an toàn trong Session để Mapper chuyển đổi đầy đủ
+        if (updatedTour.getItineraries() != null)
+            updatedTour.getItineraries().size();
+        if (updatedTour.getSchedules() != null)
+            updatedTour.getSchedules().size();
+        if (updatedTour.getDestinations() != null)
+            updatedTour.getDestinations().size();
+        if (updatedTour.getImages() != null)
+            updatedTour.getImages().size();
+
         saveOutboxEvent("TourUpdatedEvent", updatedTour.getId().toString(), tourMapper.toTourDetailVm(updatedTour));
 
         return tourMapper.toTourDetailVm(updatedTour);
@@ -146,10 +229,23 @@ public class TourServiceImpl implements TourService {
 
     @Override
     @Transactional
+    public void deleteTour(UUID id) {
+        log.info("Xóa Tour ID: {}", id);
+        TourEntity tour = tourRepository.findById(id)
+                .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_NOT_FOUND, "Không tìm thấy Tour với ID: " + id));
+
+        tourRepository.delete(tour);
+        saveOutboxEvent("TourDeletedEvent", id.toString(), Map.of("tourId", id.toString()));
+        log.info("Đã xóa Tour thành công với ID: {}", id);
+    }
+
+    @Override
+    @Transactional
     public TourScheduleVm addSchedule(UUID tourId, CreateScheduleRequest request) {
         log.info("Thêm lịch khởi hành cho Tour ID: {}", tourId);
         TourEntity tour = tourRepository.findById(tourId)
-                .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_NOT_FOUND, "Không tìm thấy Tour với ID: " + tourId));
+                .orElseThrow(
+                        () -> BusinessException.of(ErrorCode.TOUR_NOT_FOUND, "Không tìm thấy Tour với ID: " + tourId));
 
         TourScheduleEntity schedule = tourScheduleMapper.toEntity(request);
         schedule.setTour(tour);
@@ -165,14 +261,16 @@ public class TourServiceImpl implements TourService {
     public TourScheduleVm getScheduleById(UUID scheduleId) {
         log.info("Tra cứu thông tin lịch khởi hành ID: {}", scheduleId);
         TourScheduleEntity schedule = tourScheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_SCHEDULE_NOT_FOUND, "Không tìm thấy lịch khởi hành ID: " + scheduleId));
+                .orElseThrow(() -> BusinessException.of(ErrorCode.TOUR_SCHEDULE_NOT_FOUND,
+                        "Không tìm thấy lịch khởi hành ID: " + scheduleId));
         return tourScheduleMapper.toVm(schedule);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<TourVm> searchTours(TourSearchCriteria criteria) {
-        log.info("Tìm kiếm Tour với từ khóa: '{}', trang: {}, kích thước: {}", criteria.keyword(), criteria.page(), criteria.size());
+        log.info("Tìm kiếm Tour với từ khóa: '{}', trang: {}, kích thước: {}", criteria.keyword(), criteria.page(),
+                criteria.size());
 
         Specification<TourEntity> spec = TourSpecification.filterByCriteria(criteria);
         Pageable pageable = PageRequest.of(criteria.page(), criteria.size(), Sort.by("createdAt").descending());

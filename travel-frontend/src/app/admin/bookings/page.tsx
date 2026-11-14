@@ -17,12 +17,23 @@ export default function AdminBookingsPage() {
   const [refundReason, setRefundReason] = useState("");
   const [isRefunding, setIsRefunding] = useState(false);
 
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     loadBookings();
   }, []);
 
-  function loadBookings() {
-    bookingService.getAllBookings().then(setBookings);
+  async function loadBookings() {
+    setIsLoading(true);
+    try {
+      const data = await bookingService.getAllBookings();
+      setBookings(data || []);
+    } catch (err: any) {
+      console.warn("Không thể tải danh sách đơn đặt tour:", err);
+      setBookings([]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function handleRefundSimulation() {

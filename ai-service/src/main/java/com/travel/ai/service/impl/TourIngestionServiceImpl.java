@@ -41,7 +41,6 @@ public class TourIngestionServiceImpl implements TourIngestionService {
         log.info("Đã phân đoạn thành {} Chunks chuẩn cho Tour ID: {}", chunks.size(), event.getTourId());
 
         // 3. Tạo Vector Embedding (Google Gemini text-embedding-004) và lưu vào pgvector
-        List<Document> springAiDocuments = new ArrayList<>();
 
         for (TourEmbeddingEntity chunk : chunks) {
             float[] vector = null;
@@ -53,6 +52,7 @@ public class TourIngestionServiceImpl implements TourIngestionService {
 
             // Lưu bản ghi vào bảng tour_embeddings
             TourEmbeddingEntity savedEntity = tourEmbeddingRepository.save(chunk);
+            tourEmbeddingRepository.flush();
 
             // Nếu tạo được Vector, cập nhật mảng Float Vector vào cột 'embedding' kiểu 'vector(768)' trong PostgreSQL
             if (vector != null) {
@@ -63,27 +63,6 @@ public class TourIngestionServiceImpl implements TourIngestionService {
                     log.warn("Cảnh báo khi ghi Vector vào pgvector: {}", ex.getMessage());
                 }
             }
-
-            // Đóng gói thành Document để nạp vào Spring AI VectorStore
-            Map<String, Object> metadataMap = new HashMap<>();
-            metadataMap.put("tour_id", event.getTourId().toString());
-            metadataMap.put("chunk_type", chunk.getChunkType().name());
-            if (event.getMinPrice() != null) {
-                metadataMap.put("price", event.getMinPrice().doubleValue());
-            }
-            if (event.getDestination() != null) {
-                metadataMap.put("destination", event.getDestination());
-            }
-
-            springAiDocuments.add(new Document(savedEntity.getId().toString(), chunk.getContent(), metadataMap));
-        }
-
-        // 4. Đồng bộ vào Spring AI VectorStore phục vụ truy vấn Hybrid Search
-        try {
-            vectorStore.add(springAiDocuments);
-            log.info("Đã đồng bộ {} Document vào Spring AI VectorStore cho Tour ID: {}", springAiDocuments.size(), event.getTourId());
-        } catch (Exception e) {
-            log.warn("Cảnh báo khi nạp VectorStore (vẫn duy trì dữ liệu CSDL pgvector): {}", e.getMessage());
         }
 
         log.info("Hoàn tất PIPELINE 1: Indexing RAG thành công cho Tour ID: {}", event.getTourId());

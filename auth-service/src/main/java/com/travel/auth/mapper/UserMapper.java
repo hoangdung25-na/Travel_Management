@@ -18,6 +18,7 @@ public interface UserMapper {
 
     @Mapping(target = "userId", source = "id")
     @Mapping(target = "fullName", source = "profile.fullName")
+    @Mapping(target = "phoneNumber", source = "profile.phoneNumber")
     @Mapping(target = "roles", source = "roles", qualifiedByName = "mapRoleEntitiesToRoleCodes")
     UserVm toUserVm(UserEntity user);
 

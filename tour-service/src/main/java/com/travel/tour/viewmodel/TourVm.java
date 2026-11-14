@@ -15,6 +15,9 @@ public record TourVm(
         BigDecimal minPrice,
         Integer availableSeats,
         TourStatus status,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        String imageUrl,
+        String destinationCity,
+        String duration
 ) {
 }

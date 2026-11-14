@@ -29,14 +29,17 @@ public class TextChunkerHelper {
     public List<TourEmbeddingEntity> createChunks(TourUpdatedEvent tour) {
         List<TourEmbeddingEntity> chunks = new ArrayList<>();
 
-        // 1. Tạo Metadata Chunk (Thông tin tổng quan)
+        String tourLink = "/tours/" + tour.getTourId().toString();
+
+        // 1. Tạo Metadata Chunk (Thông tin tổng quan kèm đường link)
         String metadataContent = String.format(
-                "Tour: %s (Mã Tour: %s). Điểm đến: %s. Thời gian: %d ngày. Mức giá từ: %s VNĐ. Đối tượng phù hợp: %s. Mô tả: %s",
+                "Tour: %s (Mã Tour: %s). Điểm đến / Tỉnh thành: %s. Thời gian: %d ngày. Mức giá từ: %s VNĐ. Đường dẫn xem chi tiết: %s. Đối tượng phù hợp: %s. Mô tả: %s",
                 tour.getTitle(),
                 tour.getCode() != null ? tour.getCode() : "N/A",
                 tour.getDestination() != null ? tour.getDestination() : "N/A",
                 tour.getDurationDays() != null ? tour.getDurationDays() : 1,
                 tour.getMinPrice() != null ? tour.getMinPrice().toPlainString() : "Liên hệ",
+                tourLink,
                 tour.getSuitableFor() != null ? tour.getSuitableFor() : "Mọi đối tượng",
                 tour.getDescription() != null ? tour.getDescription() : ""
         );
@@ -47,6 +50,7 @@ public class TextChunkerHelper {
         metadataMap.put("title", tour.getTitle());
         metadataMap.put("destination", tour.getDestination());
         metadataMap.put("price", tour.getMinPrice() != null ? tour.getMinPrice().doubleValue() : 0);
+        metadataMap.put("tour_link", tourLink);
         metadataMap.put("chunk_type", ChunkType.METADATA.name());
 
         chunks.add(TourEmbeddingEntity.builder()

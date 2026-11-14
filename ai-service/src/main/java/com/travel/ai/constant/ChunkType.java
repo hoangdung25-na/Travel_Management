@@ -12,5 +12,10 @@ public enum ChunkType {
     /**
      * Chunk chứa thông tin chi tiết lịch trình theo từng ngày
      */
-    ITINERARY_DAY
+    ITINERARY_DAY,
+
+    /**
+     * Chunk chứa thông tin chính sách công ty (hoàn hủy vé, thanh toán, cọc, thủ tục...)
+     */
+    POLICY
 }

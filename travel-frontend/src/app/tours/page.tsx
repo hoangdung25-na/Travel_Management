@@ -16,9 +16,6 @@ import { tourService } from "@/lib/services/tour-service";
 import { PageResponse, TourVm, DestinationVm } from "@/lib/types";
 import { TourCard } from "@/components/tours/TourCard";
 import { TourCardSkeleton } from "@/components/tours/TourCardSkeleton";
-import { MockStore } from "@/lib/mock-store";
-import { MOCK_DESTINATIONS } from "@/lib/mock-data";
-
 function ToursContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -34,11 +31,8 @@ function ToursContent() {
   useEffect(() => {
     tourService
       .listDestinations()
-      .then((res) => {
-        if (res && res.length > 0) setDestinations(res);
-        else setDestinations(MOCK_DESTINATIONS);
-      })
-      .catch(() => setDestinations(MOCK_DESTINATIONS));
+      .then((res) => setDestinations(res ?? []))
+      .catch(() => setDestinations([]));
   }, []);
 
   useEffect(() => {
@@ -55,13 +49,33 @@ function ToursContent() {
     tourService
       .search(criteria)
       .then((res) => {
-        if (res && res.content && res.content.length > 0) {
-          setResult(res);
-        } else {
-          setResult(MockStore.getTours(criteria));
-        }
+        setResult(
+          res ?? {
+            content: [],
+            totalElements: 0,
+            totalPages: 0,
+            number: 0,
+            size: 9,
+            first: true,
+            last: true,
+            numberOfElements: 0,
+            empty: true,
+          }
+        );
       })
-      .catch(() => setResult(MockStore.getTours(criteria)));
+      .catch(() =>
+        setResult({
+          content: [],
+          totalElements: 0,
+          totalPages: 0,
+          number: 0,
+          size: 9,
+          first: true,
+          last: true,
+          numberOfElements: 0,
+          empty: true,
+        })
+      );
   }, [keyword, destination, minPrice, maxPrice, page]);
 
   function handleReset() {

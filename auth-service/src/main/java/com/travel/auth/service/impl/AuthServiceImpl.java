@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -43,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
     private final RoleRepository roleRepository;
     private final KeycloakService keycloakService;
     private final UserMapper userMapper;
+    private final com.travel.auth.service.EmailService emailService;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -110,10 +112,7 @@ public class AuthServiceImpl implements AuthService {
                 throw BusinessException.badRequest("Tài khoản đang chờ quản trị viên phê duyệt.");
             }
 
-            if (passwordEncoder.matches(request.getPassword(), user.getPasswordHash())
-                    || "12345678".equals(request.getPassword())
-                    || "123456".equals(request.getPassword())
-                    || "password".equals(request.getPassword())) {
+            if (passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
                 log.info("Xác thực người dùng thành công qua local database: {}", request.getUsername());
                 String token = "jwt-access-token-" + user.getId() + "-" + System.currentTimeMillis();
                 return AuthTokenVm.builder()
@@ -193,5 +192,184 @@ public class AuthServiceImpl implements AuthService {
         UserEntity updatedUser = userRepository.save(user);
 
         return userMapper.toUserVm(updatedUser);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserVm> getAllUsers() {
+        log.info("Admin fetching all users");
+        return userRepository.findAll().stream()
+                .map(userMapper::toUserVm)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public UserVm adminUpdateUser(UUID userId, com.travel.auth.dto.AdminUpdateUserRequest request) {
+        log.info("Admin updating user details for user ID: {}", userId);
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> BusinessException.of(ErrorCode.AUTH_USER_NOT_FOUND, "Không tìm thấy người dùng cho ID: " + userId));
+
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            if (user.getProfile() == null) {
+                user.setProfile(UserProfileEntity.builder().user(user).fullName(request.getFullName().trim()).build());
+            } else {
+                user.getProfile().setFullName(request.getFullName().trim());
+            }
+        }
+
+        if (request.getPhoneNumber() != null && user.getProfile() != null) {
+            user.getProfile().setPhoneNumber(request.getPhoneNumber().trim());
+        }
+
+        if (request.getStatus() != null) {
+            user.setStatus(request.getStatus());
+        }
+
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            Set<RoleEntity> newRoles = new HashSet<>();
+            for (RoleCode roleCode : request.getRoles()) {
+                roleRepository.findByCode(roleCode).ifPresent(newRoles::add);
+            }
+            if (!newRoles.isEmpty()) {
+                user.setRoles(newRoles);
+            }
+        }
+
+        UserEntity savedUser = userRepository.save(user);
+        return userMapper.toUserVm(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public void adminDeleteUser(UUID userId) {
+        log.info("Admin deleting user ID: {}", userId);
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> BusinessException.of(ErrorCode.AUTH_USER_NOT_FOUND, "Không tìm thấy người dùng cho ID: " + userId));
+
+        if ("admin@example.com".equalsIgnoreCase(user.getEmail())) {
+            throw BusinessException.badRequest("Không được phép xóa tài khoản Quản Trị Viên mặc định");
+        }
+
+        userRepository.delete(user);
+        log.info("Đã xóa người dùng thành công ID: {}", userId);
+    }
+
+    @Override
+    @Transactional
+    public AuthTokenVm loginWithGoogle(com.travel.auth.dto.GoogleLoginRequest request) {
+        log.info("Processing Google login for email: {}", request.getEmail());
+        String email = request.getEmail().trim().toLowerCase();
+
+        RoleEntity role = roleRepository.findByCode(RoleCode.ROLE_TOURIST)
+                .orElseGet(() -> roleRepository.save(RoleEntity.builder()
+                        .code(RoleCode.ROLE_TOURIST)
+                        .description("Default system role for ROLE_TOURIST")
+                        .build()));
+
+        UserEntity user = userRepository.findByEmail(email).orElseGet(() -> {
+            Set<RoleEntity> roles = new HashSet<>();
+            roles.add(role);
+
+            UserEntity newUser = UserEntity.builder()
+                    .email(email)
+                    .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString()))
+                    .status(AccountStatus.ACTIVE)
+                    .roles(roles)
+                    .build();
+
+            UserProfileEntity profile = UserProfileEntity.builder()
+                    .user(newUser)
+                    .fullName(request.getFullName() != null && !request.getFullName().isBlank() ? request.getFullName() : email.split("@")[0])
+                    .avatarUrl(request.getAvatarUrl())
+                    .phoneNumber("0901234567")
+                    .build();
+
+            newUser.setProfile(profile);
+            return userRepository.save(newUser);
+        });
+
+        // Đồng bộ avatar & tên mới nhất từ Google
+        if (user.getProfile() != null) {
+            boolean updated = false;
+            if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
+                user.getProfile().setAvatarUrl(request.getAvatarUrl());
+                updated = true;
+            }
+            if (request.getFullName() != null && !request.getFullName().isBlank()) {
+                user.getProfile().setFullName(request.getFullName());
+                updated = true;
+            }
+            if (updated) {
+                userProfileRepository.save(user.getProfile());
+            }
+        }
+
+        String token = "jwt-access-token-" + user.getId() + "-" + System.currentTimeMillis();
+        return AuthTokenVm.builder()
+                .accessToken(token)
+                .refreshToken("jwt-refresh-token-" + user.getId())
+                .tokenType("Bearer")
+                .expiresIn(3600L)
+                .build();
+    }
+
+    private final java.util.concurrent.ConcurrentHashMap<String, OtpEntry> otpCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record OtpEntry(String otp, long expiryTimeMillis) {}
+
+    @Override
+    public void sendForgotPasswordOtp(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+        log.info("Sending OTP for forgot password to email: {}", normalizedEmail);
+
+        if (!userRepository.existsByEmail(normalizedEmail)) {
+            throw BusinessException.badRequest("Email không tồn tại trong hệ thống: " + normalizedEmail);
+        }
+
+        String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
+        long expiry = System.currentTimeMillis() + (5 * 60 * 1000);
+        otpCache.put(normalizedEmail, new OtpEntry(otp, expiry));
+
+        log.info("====================================================================");
+        log.info(">> MA OTP KHOI PHUC MAT KHAU CHO {}: {}", normalizedEmail, otp);
+        log.info("====================================================================");
+
+        emailService.sendOtpEmail(normalizedEmail, otp);
+    }
+
+    @Override
+    public boolean verifyForgotPasswordOtp(String email, String otp) {
+        String normalizedEmail = email.trim().toLowerCase();
+        OtpEntry entry = otpCache.get(normalizedEmail);
+
+        if (entry == null || System.currentTimeMillis() > entry.expiryTimeMillis()) {
+            otpCache.remove(normalizedEmail);
+            throw BusinessException.badRequest("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng lấy mã mới.");
+        }
+
+        if (!entry.otp().equals(otp.trim())) {
+            throw BusinessException.badRequest("Mã OTP không chính xác.");
+        }
+
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(com.travel.auth.dto.ResetPasswordRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        log.info("Resetting password for email: {}", normalizedEmail);
+
+        verifyForgotPasswordOtp(normalizedEmail, request.getOtp());
+
+        UserEntity user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> BusinessException.badRequest("Email không tồn tại: " + normalizedEmail));
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        otpCache.remove(normalizedEmail);
+        log.info("Cập nhật mật khẩu mới thành công cho user: {}", normalizedEmail);
     }
 }
