@@ -15,8 +15,11 @@ interface MarkdownMessageProps {
 export function MarkdownMessage({ content }: MarkdownMessageProps) {
   if (!content) return null;
 
+  // Chuẩn hóa trường hợp AI chèn khoảng trắng/xuống dòng giữa ] và (
+  const normalizedContent = content.replace(/\]\s+\(((?:https?:\/\/[^\s)]+)?\/tours\/[^\s)]+)\)/g, "]($1)");
+
   // Tách nội dung thành các dòng
-  const lines = content.split("\n");
+  const lines = normalizedContent.split("\n");
 
   return (
     <div className="space-y-2 text-stone-800 text-sm leading-relaxed">
@@ -26,6 +29,11 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
         // 1. Dòng trống
         if (!trimmed) {
           return <div key={lineIndex} className="h-1.5" />;
+        }
+
+        // 1b. Đường kẻ phân cách ngang (--- hoặc ***)
+        if (/^(-{3,}|\*{3,})$/.test(trimmed)) {
+          return <hr key={lineIndex} className="border-t border-[#e7e0d3] my-2" />;
         }
 
         // 2. Tiêu đề (### hoặc ## hoặc in đậm đầu dòng)
@@ -83,61 +91,101 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
   );
 }
 
+function normalizeTourHref(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  const tourPathMatch = trimmed.match(/\/tours\/[a-zA-Z0-9-]+/);
+  if (tourPathMatch && (trimmed.startsWith("/tours/") || trimmed.includes("localhost") || trimmed.startsWith("http"))) {
+    return tourPathMatch[0];
+  }
+  return trimmed;
+}
+
+function renderTourLink(linkText: string, linkUrl: string, key: React.Key): React.ReactNode {
+  const cleanLabel = linkText.replace(/^\*\*|\*\*$/g, "").trim();
+  const href = normalizeTourHref(linkUrl);
+  const isTourLink = href.startsWith("/tours/");
+
+  return (
+    <Link
+      key={key}
+      href={href}
+      className={
+        isTourLink
+          ? "inline font-bold text-blue-600 hover:text-blue-800 underline decoration-blue-400/80 hover:decoration-blue-700 underline-offset-4 transition-colors"
+          : "inline font-semibold text-blue-600 hover:text-blue-800 underline underline-offset-4 transition-colors"
+      }
+      title={`Xem chi tiết ${cleanLabel}`}
+    >
+      <span>{cleanLabel}</span>
+      <ExternalLink size={13} className="inline-block ml-1 mb-0.5 opacity-80" />
+    </Link>
+  );
+}
+
 /**
- * Phân tích và render các thành phần nội dòng (Link Markdown [Text](url), in đậm **text**, hotline)
+ * Phân tích và render các thành phần nội dòng:
+ * - Link Markdown [Text](url) (kể cả khi bị bọc trong **...**)
+ * - Đường dẫn trần /tours/{id}
+ * - Chữ in đậm **text** (hỗ trợ đệ quy link bên trong)
+ * - Mã inline `code`
+ * - Hotline 1900 6868
  */
 function renderFormattedInline(text: string): React.ReactNode {
-  // Regex tìm kiếm các đoạn [Text](URL) hoặc **Text** hoặc Hotline 1900 6868
-  const tokenRegex = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|1900\s*6868)/g;
+  const tokenRegex =
+    /(\*\*\[[^\]]+\]\([^)]+\)\*\*|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`|\/tours\/[0-9a-fA-F-]{8,}|1900\s*6868)/g;
   const parts = text.split(tokenRegex);
 
   return parts.map((part, index) => {
     if (!part) return null;
 
-    // A. Xử lý Link Markdown [Tên link](Đường dẫn)
-    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (linkMatch) {
-      const linkText = linkMatch[1];
-      const linkUrl = linkMatch[2];
-
-      const isTourLink = linkUrl.startsWith("/tours/") || linkUrl.includes("/tours/");
-
-      return (
-        <Link
-          key={index}
-          href={linkUrl}
-          className={`inline-flex items-center gap-1.5 mx-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-sm ${
-            isTourLink
-              ? "bg-[#E2603F] text-white hover:bg-[#c94f31] hover:shadow-md hover:scale-[1.02]"
-              : "bg-[#0D2B2B] text-amber-200 hover:bg-[#184646]"
-          }`}
-          title={`Xem chi tiết ${linkText}`}
-        >
-          <Compass size={13} className="shrink-0 animate-spin-slow" />
-          <span>{linkText}</span>
-          <ExternalLink size={12} className="shrink-0 opacity-80" />
-        </Link>
-      );
+    // A1. Link Markdown bị bọc trong in đậm **[Tên link](Đường dẫn)**
+    const boldLinkMatch = part.match(/^\*\*\[([^\]]+)\]\(([^)]+)\)\*\*$/);
+    if (boldLinkMatch) {
+      return renderTourLink(boldLinkMatch[1], boldLinkMatch[2], index);
     }
 
-    // B. Xử lý Text in đậm **in đậm**
+    // A2. Link Markdown chuẩn [Tên link](Đường dẫn)
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      return renderTourLink(linkMatch[1], linkMatch[2], index);
+    }
+
+    // A3. Đường dẫn trần /tours/{uuid} nếu AI không bọc ngoặc Markdown
+    if (/^\/tours\/[0-9a-fA-F-]{8,}$/.test(part)) {
+      return renderTourLink("Xem chi tiết tour", part, index);
+    }
+
+    // B. Text in đậm **in đậm** (đệ quy để vẫn parse được link hoặc code bên trong)
     const boldMatch = part.match(/^\*\*([^*]+)\*\*$/);
     if (boldMatch) {
       return (
         <strong key={index} className="font-bold text-[#0D2B2B]">
-          {boldMatch[1]}
+          {renderFormattedInline(boldMatch[1])}
         </strong>
       );
     }
 
-    // C. Xử lý Hotline 1900 6868
+    // C. Mã inline `TOUR-XXX`
+    const codeMatch = part.match(/^`([^`]+)`$/);
+    if (codeMatch) {
+      return (
+        <code
+          key={index}
+          className="px-1.5 py-0.5 mx-0.5 rounded bg-stone-100 text-[#0D2B2B] font-mono text-xs font-semibold border border-stone-200/80"
+        >
+          {codeMatch[1]}
+        </code>
+      );
+    }
+
+    // D. Hotline 1900 6868
     if (part.includes("1900") && part.includes("6868")) {
       return (
         <a
           key={index}
           href="tel:19006868"
           className="inline-flex items-center gap-1 font-bold text-[#E2603F] hover:underline mx-1"
-          title="Gọi Hotline CSKH 1900 6868"
+          title="Gọi Hotline CSKH 24/7: 1900 6868"
         >
           <Phone size={13} className="inline" />
           <span>{part}</span>
@@ -145,7 +193,7 @@ function renderFormattedInline(text: string): React.ReactNode {
       );
     }
 
-    // D. Text thường
+    // E. Text thường
     return <span key={index}>{part}</span>;
   });
 }

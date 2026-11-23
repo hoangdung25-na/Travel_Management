@@ -19,9 +19,11 @@ import {
   Ticket,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   X,
   Image as ImageIcon,
   Maximize2,
+  Utensils,
 } from "lucide-react";
 import { tourService } from "@/lib/services/tour-service";
 import { bookingService } from "@/lib/services/booking-service";
@@ -29,6 +31,98 @@ import { useAuth } from "@/lib/auth-context";
 import { TourDetailVm, TourScheduleVm, PassengerRequest } from "@/lib/types";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+
+function formatDayTitle(rawTitle: string): { title: string; meals?: string } {
+  let clean = (rawTitle || "").trim();
+  let meals: string | undefined;
+  const mealMatch = clean.match(/\(([^)]*(?:ăn|bữa|sáng|trưa|tối)[^)]*)\)\s*$/i);
+  if (mealMatch) {
+    meals = mealMatch[1].trim();
+    clean = clean.slice(0, mealMatch.index).trim();
+  }
+  // Convert screaming ALL CAPS Vietnamese titles into readable Title Case
+  const letters = clean.replace(/[^A-Za-zÀ-ỹ]/g, "");
+  const upperLetters = clean.replace(/[^A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠƯẠ-Ỹ]/g, "");
+  if (letters.length > 8 && upperLetters.length / letters.length > 0.75) {
+    clean = clean
+      .toLowerCase()
+      .replace(/(^|[\s\-–•/,])([a-zàáâãèéêìíòóôõùúăđĩũơưạ-ỹ])/g, (_, sep, ch) => sep + ch.toUpperCase());
+  }
+  return { title: clean, meals };
+}
+
+function parseDescriptionBlocks(raw: string): { intro?: string; bullets: { lead?: string; body: string }[] } {
+  const cleaned = (raw || "")
+    .replace(/^\s*[:\-–•]+\s*/, "")
+    .trim();
+  if (!cleaned) return { bullets: [] };
+
+  const lines = cleaned
+    .split(/\n+/)
+    .map((l) => l.replace(/^\s*[:\-–•]+\s*/, "").trim())
+    .filter(Boolean);
+
+  if (lines.length === 1 && lines[0].includes("•")) {
+    const parts = lines[0].split("•").map((p) => p.trim()).filter(Boolean);
+    const [first, ...rest] = parts;
+    return {
+      intro: first,
+      bullets: rest.map((body) => ({ body })),
+    };
+  }
+
+  const bullets: { lead?: string; body: string }[] = [];
+  let intro: string | undefined;
+
+  lines.forEach((line, idx) => {
+    const colonIdx = line.indexOf(":");
+    if (colonIdx > 2 && colonIdx <= 80) {
+      const lead = line.slice(0, colonIdx).trim();
+      const body = line.slice(colonIdx + 1).trim();
+      if (body) {
+        bullets.push({ lead, body });
+        return;
+      }
+    }
+    if (idx === 0 && lines.length > 1 && line.length <= 260) {
+      intro = line;
+    } else {
+      bullets.push({ body: line });
+    }
+  });
+
+  return { intro, bullets };
+}
+
+function parseItineraryLines(content: string): { tag?: string; lead?: string; text: string }[] {
+  if (!content) return [];
+  const rawLines = content
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  return rawLines.map((line) => {
+    const timeMatch = line.match(
+      /^((?:\d{1,2}h\d{0,2}(?:\s*[-–]\s*\d{1,2}h\d{0,2})?)|Sáng|Buổi sáng|Trưa|Buổi trưa|Chiều|Buổi chiều|Tối|Buổi tối|Đêm)\s*[:\-–]\s*(.+)$/i
+    );
+    if (timeMatch) {
+      return {
+        tag: timeMatch[1].trim(),
+        text: timeMatch[2].trim(),
+      };
+    }
+
+    const leadMatch = line.match(/^([^:]{3,55}):\s+(.+)$/);
+    if (leadMatch && !leadMatch[1].includes(".")) {
+      return {
+        lead: leadMatch[1].trim(),
+        text: leadMatch[2].trim(),
+      };
+    }
+
+    return { text: line };
+  });
+}
 
 export default function TourDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -38,6 +132,7 @@ export default function TourDetailPage({ params }: { params: Promise<{ id: strin
   const [tour, setTour] = useState<TourDetailVm | null | "error">(null);
   const [selectedSchedule, setSelectedSchedule] = useState<TourScheduleVm | null>(null);
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
+  const [collapsedDays, setCollapsedDays] = useState<Record<number, boolean>>({});
 
   // Passenger counts
   const [adultCount, setAdultCount] = useState(1);
@@ -358,38 +453,183 @@ export default function TourDetailPage({ params }: { params: Promise<{ id: strin
         {/* Left Column: Description, Itinerary, Services */}
         <div className="lg:col-span-2 space-y-10">
           {/* Description */}
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#e7e0d3] shadow-sm space-y-4">
-            <h2 className="text-xl font-bold text-stone-900 border-b border-[#f5f0e6] pb-3">
-              Mô Tả Tổng Quan Tour
-            </h2>
-            <p className="text-stone-600 leading-relaxed text-sm sm:text-base whitespace-pre-line">
-              {tour.description}
-            </p>
-          </div>
+          {(() => {
+            const { intro, bullets } = parseDescriptionBlocks(tour.description || "");
+            return (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#e7e0d3] shadow-sm space-y-5">
+                <div className="flex items-center justify-between border-b border-[#f5f0e6] pb-3.5">
+                  <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
+                    <Sparkles size={19} className="text-[#E2603F]" />
+                    Mô Tả Tổng Quan Tour
+                  </h2>
+                  <span className="text-xs font-semibold text-stone-500 bg-[#FBF8F2] border border-[#e7e0d3] px-2.5 py-1 rounded-full">
+                    Điểm nổi bật
+                  </span>
+                </div>
+
+                {intro && (
+                  <p className="text-stone-700 text-[15px] leading-7 font-medium bg-[#FBF8F2] border-l-4 border-[#E2603F] px-4 py-3 rounded-r-xl">
+                    {intro}
+                  </p>
+                )}
+
+                {bullets.length > 0 && (
+                  <ul className="space-y-3.5">
+                    {bullets.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-3 text-[15px] leading-7 text-stone-700">
+                        <CheckCircle2 size={17} className="text-[#E2603F] shrink-0 mt-1.5" />
+                        <div className="space-y-0.5 text-left">
+                          {item.lead ? (
+                            <>
+                              <span className="font-semibold text-stone-900">{item.lead}: </span>
+                              <span>{item.body}</span>
+                            </>
+                          ) : (
+                            <span>{item.body}</span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Detailed Itinerary */}
-          {tour.itineraries.length > 0 && (
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#e7e0d3] shadow-sm space-y-6">
-              <h2 className="text-xl font-bold text-stone-900 border-b border-[#f5f0e6] pb-3">
-                Lịch Trình Chi Tiết Theo Ngày
-              </h2>
-              <div className="space-y-6">
-                {tour.itineraries
-                  .sort((a, b) => a.dayNumber - b.dayNumber)
-                  .map((it, idx) => (
-                    <div key={it.id} className="relative pl-8 pb-6 border-l-2 border-[#E2603F] last:border-l-0 last:pb-0">
-                      <div className="absolute -left-[17px] top-0 w-8 h-8 rounded-full bg-[#0D2B2B] text-[#D4A24C] font-bold text-xs flex items-center justify-center shadow-md border border-[#D4A24C]/30">
-                        N{it.dayNumber}
+          {tour.itineraries.length > 0 && (() => {
+            const sortedItineraries = [...tour.itineraries].sort((a, b) => a.dayNumber - b.dayNumber);
+            const allCollapsed = sortedItineraries.every((it) => collapsedDays[it.dayNumber]);
+            return (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#e7e0d3] shadow-sm space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f5f0e6] pb-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-xl font-bold text-stone-900">
+                      Lịch Trình Chi Tiết Theo Ngày
+                    </h2>
+                    <span className="text-xs font-bold text-[#0D2B2B] bg-[#FBF8F2] border border-[#e7e0d3] px-2.5 py-1 rounded-full">
+                      {sortedItineraries.length} ngày
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next: Record<number, boolean> = {};
+                      sortedItineraries.forEach((it) => {
+                        next[it.dayNumber] = !allCollapsed;
+                      });
+                      setCollapsedDays(next);
+                    }}
+                    className="text-xs font-semibold text-[#E2603F] hover:text-[#c94f30] transition-colors"
+                  >
+                    {allCollapsed ? "Mở rộng tất cả" : "Thu gọn tất cả"}
+                  </button>
+                </div>
+
+                <div className="space-y-5">
+                  {sortedItineraries.map((it, idx) => {
+                    const { title: dayTitle, meals } = formatDayTitle(it.title);
+                    const lines = parseItineraryLines(it.content);
+                    const isCollapsed = !!collapsedDays[it.dayNumber];
+                    const dayPhoto = tourImages.length > 1 && idx < tourImages.length ? tourImages[idx] : null;
+
+                    return (
+                      <div
+                        key={it.id}
+                        className="relative pl-9 pb-5 border-l-2 border-[#E2603F]/30 last:border-l-0 last:pb-0"
+                      >
+                        <div className="absolute -left-[17px] top-1 w-8 h-8 rounded-full bg-[#0D2B2B] text-[#D4A24C] font-bold text-xs flex items-center justify-center shadow-md border border-[#D4A24C]/40">
+                          N{it.dayNumber}
+                        </div>
+
+                        <div className="rounded-2xl border border-[#ede6d9] bg-[#FDFBF7] overflow-hidden transition-all">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCollapsedDays((prev) => ({
+                                ...prev,
+                                [it.dayNumber]: !prev[it.dayNumber],
+                              }))
+                            }
+                            className="w-full text-left px-5 py-4 flex items-start justify-between gap-3 hover:bg-[#FBF8F2] transition-colors"
+                          >
+                            <div className="space-y-1.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#E2603F]">
+                                  Ngày {it.dayNumber}
+                                </span>
+                                {meals && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-600 bg-white border border-[#e7e0d3] px-2 py-0.5 rounded-full">
+                                    <Utensils size={11} className="text-[#D4A24C]" />
+                                    {meals}
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="font-bold text-stone-900 text-base leading-snug">
+                                {dayTitle}
+                              </h4>
+                            </div>
+                            <ChevronDown
+                              size={18}
+                              className={`text-stone-400 shrink-0 mt-1 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : "rotate-0"
+                                }`}
+                            />
+                          </button>
+
+                          {!isCollapsed && (
+                            <div className="px-5 pb-5 pt-2 border-t border-[#f1ebe0] bg-white space-y-4">
+                              <div className="space-y-3 text-left">
+                                {lines.map((item, lineIdx) => (
+                                  <div
+                                    key={lineIdx}
+                                    className="text-[14.5px] leading-7 text-stone-700"
+                                  >
+                                    {item.tag && (
+                                      <span className="inline-block font-semibold text-xs text-[#0D2B2B] bg-[#FBF8F2] border border-[#e7e0d3] px-2.5 py-0.5 rounded-md mr-2 align-baseline">
+                                        {item.tag}
+                                      </span>
+                                    )}
+                                    {item.lead && (
+                                      <span className="font-semibold text-stone-900">
+                                        {item.lead}:{" "}
+                                      </span>
+                                    )}
+                                    <span>{item.text}</span>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {dayPhoto && (
+                                <div
+                                  onClick={() => setActiveLightboxIndex(idx)}
+                                  className="relative h-52 sm:h-60 w-full rounded-2xl overflow-hidden border border-[#e7e0d3] group cursor-pointer"
+                                >
+                                  <img
+                                    src={dayPhoto.url}
+                                    alt={dayPhoto.caption || dayTitle}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+                                  <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between text-white">
+                                    <span className="text-xs font-medium line-clamp-1">
+                                      {dayPhoto.caption || dayTitle}
+                                    </span>
+                                    <span className="text-[11px] font-semibold bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-lg flex items-center gap-1 shrink-0">
+                                      <Maximize2 size={11} /> Xem ảnh
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-1.5">
-                        <h4 className="font-bold text-stone-900 text-base">{it.title}</h4>
-                        <p className="text-stone-600 text-sm leading-relaxed">{it.content}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Included / Excluded Services */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -451,11 +691,10 @@ export default function TourDetailPage({ params }: { params: Promise<{ id: strin
                   key={s.id}
                   onClick={() => setSelectedSchedule(s)}
                   disabled={s.availableSeats === 0}
-                  className={`w-full text-left rounded-2xl border p-3.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                    selectedSchedule?.id === s.id
-                      ? "border-[#E2603F] bg-[#E2603F]/10 shadow-sm"
-                      : "border-[#e7e0d3] hover:border-[#E2603F]/50"
-                  }`}
+                  className={`w-full text-left rounded-2xl border p-3.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${selectedSchedule?.id === s.id
+                    ? "border-[#E2603F] bg-[#E2603F]/10 shadow-sm"
+                    : "border-[#e7e0d3] hover:border-[#E2603F]/50"
+                    }`}
                 >
                   <p className="text-xs font-bold text-stone-800">{formatDateTime(s.departureTime)}</p>
                   <div className="flex items-center justify-between mt-2 text-xs">
@@ -612,11 +851,10 @@ export default function TourDetailPage({ params }: { params: Promise<{ id: strin
                 <button
                   key={idx}
                   onClick={() => setActiveLightboxIndex(idx)}
-                  className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
-                    idx === activeLightboxIndex
-                      ? "border-[#D4A24C] scale-105 opacity-100"
-                      : "border-transparent opacity-50 hover:opacity-80"
-                  }`}
+                  className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${idx === activeLightboxIndex
+                    ? "border-[#D4A24C] scale-105 opacity-100"
+                    : "border-transparent opacity-50 hover:opacity-80"
+                    }`}
                 >
                   <img src={img.url} alt={`thumb ${idx}`} className="w-full h-full object-cover" />
                 </button>
